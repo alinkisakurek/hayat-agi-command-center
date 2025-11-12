@@ -1,18 +1,5 @@
 import { createTheme } from '@mui/material/styles';
 
-/**
- * Hayat Ağı Command Center Theme
- * 
- * Material Design 3 renk sistemine göre yapılandırılmış tema
- * light.css dosyasındaki renkler kullanılmıştır
- * 
- * MD3 Tema Yapısı:
- * - Core Colors: Primary, Secondary, Tertiary, Error, Neutral, Neutral Variant
- * - Tonal Palette: Her core color için otomatik tonlar
- * - Component Mapping: MD3 renk token'ları MUI component'lerine eşleştirilmiş
- */
-
-// RGB string'i hex'e çeviren helper fonksiyon
 const rgbToHex = (rgb) => {
   const match = rgb.match(/\d+/g);
   if (!match || match.length !== 3) return rgb;
@@ -22,10 +9,7 @@ const rgbToHex = (rgb) => {
   return `#${r}${g}${b}`.toUpperCase();
 };
 
-// Material Design 3 Core Colors (light.css'den)
-// Bu renkler tema generator'dan gelen core colors
 const coreColors = {
-  // Primary - Ana marka rengi
   primary: {
     main: 'rgb(0, 76, 180)',           // #004CB4 - Core primary
     container: 'rgb(0, 99, 229)',     // #0063E5 - Primary container
@@ -35,7 +19,6 @@ const coreColors = {
     fixedDim: 'rgb(176, 198, 255)',   // #B0C6FF - Primary fixed dim
   },
   
-  // Secondary - İkincil marka rengi
   secondary: {
     main: 'rgb(71, 93, 147)',         // #475D93 - Core secondary
     container: 'rgb(172, 195, 255)', // #ACC3FF - Secondary container
@@ -45,7 +28,6 @@ const coreColors = {
     fixedDim: 'rgb(176, 198, 255)',  // #B0C6FF - Secondary fixed dim
   },
   
-  // Tertiary - Üçüncül vurgu rengi (genelde success için kullanılır)
   tertiary: {
     main: 'rgb(61, 103, 0)',          // #3D6700 - Core tertiary
     container: 'rgb(79, 130, 0)',     // #4F8200 - Tertiary container
@@ -55,7 +37,6 @@ const coreColors = {
     fixedDim: 'rgb(155, 216, 83)',    // #9BD853 - Tertiary fixed dim
   },
   
-  // Error - Hata durumları için
   error: {
     main: 'rgb(186, 26, 26)',         // #BA1A1A - Core error
     container: 'rgb(255, 218, 214)',  // #FFDAD6 - Error container
@@ -63,7 +44,6 @@ const coreColors = {
     onContainer: 'rgb(147, 0, 10)',   // #93000A - On error container
   },
   
-  // Neutral - Arka plan ve yüzeyler için
   neutral: {
     background: 'rgb(250, 248, 255)',  // #FAF8FF - Background
     surface: 'rgb(250, 248, 255)',     // #FAF8FF - Surface
@@ -75,13 +55,11 @@ const coreColors = {
     onSurfaceVariant: 'rgb(66, 70, 84)', // #424654 - On surface variant
   },
   
-  // Neutral Variant - Orta vurgu ve varyantlar için
   neutralVariant: {
     outline: 'rgb(114, 119, 134)',        // #727786 - Outline
     outlineVariant: 'rgb(194, 198, 215)', // #C2C6D7 - Outline variant
   },
   
-  // Surface Container Levels (MD3'ün yeni özelliği)
   surfaceContainers: {
     lowest: 'rgb(255, 255, 255)',   // #FFFFFF
     low: 'rgb(242, 243, 254)',      // #F2F3FE
@@ -91,20 +69,17 @@ const coreColors = {
   },
 };
 
-// MUI Theme oluşturma
 const theme = createTheme({
   palette: {
     mode: 'light',
     
-    // Primary - MD3 Primary renk sistemi
     primary: {
       main: rgbToHex(coreColors.primary.main),
       light: rgbToHex(coreColors.primary.container),
-      dark: 'rgb(0, 50, 123)', // Daha koyu ton (tonal palette'den)
+      dark: 'rgb(0, 50, 123)',
       contrastText: rgbToHex(coreColors.primary.onMain),
     },
     
-    // Secondary - MD3 Secondary renk sistemi
     secondary: {
       main: rgbToHex(coreColors.secondary.main),
       light: rgbToHex(coreColors.secondary.container),
@@ -112,7 +87,6 @@ const theme = createTheme({
       contrastText: rgbToHex(coreColors.secondary.onMain),
     },
     
-    // Tertiary - MD3 Tertiary (Success olarak kullanılabilir)
     tertiary: {
       main: rgbToHex(coreColors.tertiary.main),
       light: rgbToHex(coreColors.tertiary.container),
@@ -120,7 +94,6 @@ const theme = createTheme({
       contrastText: rgbToHex(coreColors.tertiary.onMain),
     },
     
-    // Error - MD3 Error renk sistemi
     error: {
       main: rgbToHex(coreColors.error.main),
       light: rgbToHex(coreColors.error.container),
@@ -128,7 +101,6 @@ const theme = createTheme({
       contrastText: rgbToHex(coreColors.error.onMain),
     },
     
-    // Warning - Material Design standard (MD3'te yok, ekliyoruz)
     warning: {
       main: '#ff9800',
       light: '#ffb74d',
@@ -136,7 +108,6 @@ const theme = createTheme({
       contrastText: '#ffffff',
     },
     
-    // Info - Material Design standard (MD3'te yok, ekliyoruz)
     info: {
       main: '#2196f3',
       light: '#64b5f6',
@@ -144,7 +115,6 @@ const theme = createTheme({
       contrastText: '#ffffff',
     },
     
-    // Success - Tertiary'yi success olarak kullan
     success: {
       main: rgbToHex(coreColors.tertiary.main),
       light: rgbToHex(coreColors.tertiary.container),
@@ -152,23 +122,18 @@ const theme = createTheme({
       contrastText: rgbToHex(coreColors.tertiary.onMain),
     },
     
-    // Background & Surface - MD3 Neutral sistemi
     background: {
       default: rgbToHex(coreColors.neutral.background),
       paper: rgbToHex(coreColors.neutral.surface),
     },
     
-    // Text - MD3 On-colors sistemi
     text: {
       primary: rgbToHex(coreColors.neutral.onSurface),
       secondary: rgbToHex(coreColors.neutral.onSurfaceVariant),
     },
     
-    // Divider - MD3 Outline sistemi
     divider: rgbToHex(coreColors.neutralVariant.outlineVariant),
     
-    // MUI'ye özel MD3 renkleri (custom palette extension)
-    // Bu renkler component'lerde sx prop ile kullanılabilir
     md3: {
       surface: {
         variant: rgbToHex(coreColors.neutral.surfaceVariant),
@@ -278,7 +243,6 @@ const theme = createTheme({
   },
   
   components: {
-    // Button - MD3 Button stilleri
     MuiButton: {
       styleOverrides: {
         root: {
@@ -296,7 +260,6 @@ const theme = createTheme({
       },
     },
     
-    // Card - MD3 Card stilleri
     MuiCard: {
       styleOverrides: {
         root: {
@@ -307,7 +270,6 @@ const theme = createTheme({
       },
     },
     
-    // TextField - MD3 TextField stilleri
     MuiTextField: {
       styleOverrides: {
         root: {
@@ -327,7 +289,6 @@ const theme = createTheme({
       },
     },
     
-    // Paper - MD3 Surface stilleri
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -337,7 +298,6 @@ const theme = createTheme({
       },
     },
     
-    // AppBar - MD3 AppBar stilleri
     MuiAppBar: {
       styleOverrides: {
         root: {
