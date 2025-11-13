@@ -6,9 +6,9 @@ async function connectDB() {
     await mongoose.connect(uri, {
       // keep options minimal; Mongoose 8 uses sane defaults
     });
-    console.log('MongoDB bağlantısı başarılı');
+    console.log('MongoDB connection successful');
   } catch (err) {
-    console.error('MongoDB bağlantı hatası:', err.message);
+    console.error('MongoDB connection error:', err.message);
     process.exit(1);
   }
 }

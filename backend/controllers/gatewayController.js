@@ -1,4 +1,4 @@
-// Gateway cihazlarının durumunu yöneten mantık (stub)
+// Logic to manage the state of gateway devices (stub)
 const Gateway = require('../models/Gateway');
 
 // GET /api/gateways

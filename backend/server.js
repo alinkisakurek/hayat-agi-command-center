@@ -5,20 +5,20 @@ const { connectDB } = require('./config/db');
 const { loadEnv } = require('./config');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
-// Ortam değişkenlerini yükle
+// Load environment variables
 loadEnv();
 
 const app = express();
 
-// Orta katmanlar
+// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Veritabanına bağlan
+// Connect to the database
 connectDB();
 
-// Rotalar
+// Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -27,7 +27,7 @@ app.use('/api/gateways', require('./routes/gatewayRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/auth', require('./routes/authRoutes'));
 
-// Hata yakalama
+// Error handling
 app.use(notFound);
 app.use(errorHandler);
 

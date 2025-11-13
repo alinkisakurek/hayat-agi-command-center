@@ -1,4 +1,4 @@
-// Tekrar kullanılan yardımcı fonksiyonlar (tarih formatlama, vb.)
+// Reusable helper functions (date formatting, etc.)
 
 function formatISO(date) {
   try {

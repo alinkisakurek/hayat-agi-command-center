@@ -1,4 +1,4 @@
-// Gateway cihazlarından gelen gerçek zamanlı verileri işleme (opsiyonel örnek)
+// Processing real-time data from gateway devices (optional example)
 const mqtt = require('mqtt');
 
 let client;
@@ -6,30 +6,30 @@ let client;
 function connectMQTT() {
   const url = process.env.MQTT_URL;
   if (!url) {
-    console.log('MQTT_URL tanımlı değil, MQTT servisi başlatılmadı.');
+    console.log('MQTT_URL is not defined, MQTT service was not started.');
     return null;
   }
   client = mqtt.connect(url);
 
   client.on('connect', () => {
-    console.log('MQTT bağlandı');
+    console.log('MQTT connected');
     const topic = process.env.MQTT_TOPIC || 'gateways/+/status';
     client.subscribe(topic, (err) => {
-      if (err) console.error('MQTT subscribe hatası:', err.message);
+      if (err) console.error('MQTT subscribe error:', err.message);
     });
   });
 
   client.on('message', (topic, message) => {
     try {
       const payload = JSON.parse(message.toString());
-      // TODO: payload'ı Gateway modeline işle
-      console.log('MQTT mesajı:', topic, payload);
+      // TODO: process payload into the Gateway model
+      console.log('MQTT message:', topic, payload);
     } catch (e) {
-      console.error('MQTT mesaj parse hatası:', e.message);
+      console.error('MQTT message parse error:', e.message);
     }
   });
 
-  client.on('error', (err) => console.error('MQTT hata:', err.message));
+  client.on('error', (err) => console.error('MQTT error:', err.message));
   return client;
 }
 
