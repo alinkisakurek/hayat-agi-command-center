@@ -25,6 +25,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/gateways', require('./routes/gatewayRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/auth', require('./routes/authRoutes'));
 
 // Hata yakalama
 app.use(notFound);
