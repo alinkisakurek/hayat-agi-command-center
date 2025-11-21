@@ -15,7 +15,10 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Frontend'in çalıştığı tam adres (sonunda / yok)
+  credentials: true // Kimlik bilgilerine izin ver
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 

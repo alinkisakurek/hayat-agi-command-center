@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // API base URL - Backend hazır olduğunda buraya gerçek URL gelecek
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// Varsayılan backend port bu projede `5000` olduğundan default'u ona göre ayarlıyoruz.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/';
 
 // Axios instance oluştur
 const api = axios.create({
