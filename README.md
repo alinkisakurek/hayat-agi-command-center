@@ -1,4 +1,4 @@
-**A Web-Based Management and Visualization Interface for a Resilient Disaster Communication Network.**
+## A Web-Based Management and Visualization Interface for a Resilient Disaster Communication Network.
 
 This project serves as the central nervous system for the "Hayat Ağı" mesh network, providing real-time visualization, device management, and situational awareness for disaster response teams.
 
