@@ -9,8 +9,8 @@ const HeroSection = () => {
         <Box
             sx={{
                 width: '100%',
-                bgcolor: 'background.default', // Temadan gelen arka plan rengi
-                py: 8, // Dikey boşluk (padding-y) - Ferahlık katar
+                bgcolor: 'background.default',
+                py: 8,
                 position: 'relative',
                 overflow: 'hidden',
             }}
@@ -18,11 +18,11 @@ const HeroSection = () => {
             <Container maxWidth="xl">
                 <Grid container spacing={4} alignItems="center">
 
-                    {/* --- SOL TARAF: YAZILAR VE BUTONLAR --- */}
-                    <Grid item xs={12} md={6}>
-                        <Box sx={{ pr: { md: 4 } }}> {/* Masaüstünde sağdan boşluk bırak */}
 
-                            {/* Üst Başlık (Tagline) */}
+                    <Grid item xs={12} md={6}>
+                        <Box sx={{ pr: { md: 4 } }}>
+
+
                             <Typography
                                 variant="subtitle1"
                                 color="primary"
@@ -32,7 +32,7 @@ const HeroSection = () => {
                                 Deprem Sonrası Haberleşme
                             </Typography>
 
-                            {/* Ana Başlık (H1) */}
+
                             <Typography
                                 variant="h2"
                                 component="h1"
@@ -41,25 +41,23 @@ const HeroSection = () => {
                                 sx={{
                                     mb: 3,
                                     lineHeight: 1.2,
-                                    fontSize: { xs: '2.5rem', md: '3.5rem' } // Mobilde küçük, pc'de büyük
+                                    fontSize: { xs: '2.5rem', md: '3.5rem' }
                                 }}
                             >
                                 İletişim Kesildiğinde <br />
                                 <Box component="span" sx={{ color: 'primary.main' }}>Hayat Ağı</Box> Devrede.
                             </Typography>
 
-                            {/* Açıklama Metni */}
+
                             <Typography
                                 variant="body1"
                                 color="text.secondary"
                                 sx={{ mb: 4, fontSize: '1.1rem', maxWidth: 600 }}
                             >
-                                Doğal afetlerde GSM ve internet altyapısı çökse bile, Hayat Ağı'nın
-                                Mesh teknolojisi sayesinde sevdiklerinizle iletişimde kalın ve
-                                acil durum sinyali gönderin.
+                                Sesiniz enkaz altında kalmasın. GSM ve internet altyapıları çökse bile, Hayat Ağı çalışmaya devam eder. Gelişmiş Mesh teknolojimiz sayesinde en zorlu koşullarda bile dünyaya bağlanın; konumunuzu ve hayati durumunuzu kurtarma ekiplerine saniyeler içinde ulaştırın.
                             </Typography>
 
-                            {/* Buton Grubu */}
+
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                                 <Button
                                     variant="contained"
@@ -68,7 +66,7 @@ const HeroSection = () => {
                                     component={Link}
                                     to="/auth/register"
                                     sx={{
-                                        borderRadius: '28px', // Modern yuvarlak buton
+                                        borderRadius: '28px',
                                         px: 4,
                                         py: 1.5,
                                         fontWeight: 'bold'
@@ -82,14 +80,14 @@ const HeroSection = () => {
                                     size="large"
                                     startIcon={<PlayCircleOutlineIcon />}
                                     component={Link}
-                                    to="/nasil-calisir"
+                                    to="https://www.youtube.com/watch?v=IPkQdDeW6Xg"
                                     sx={{
                                         borderRadius: '28px',
                                         px: 4,
                                         py: 1.5,
                                         fontWeight: 'bold',
                                         borderWidth: 2,
-                                        '&:hover': { borderWidth: 2 } // Hoverda kenarlık incelmesin
+                                        '&:hover': { borderWidth: 2 }
                                     }}
                                 >
                                     Nasıl Çalışır?
@@ -98,14 +96,14 @@ const HeroSection = () => {
                         </Box>
                     </Grid>
 
-                    {/* --- SAĞ TARAF: GÖRSEL --- */}
+
                     <Grid item xs={12} md={6}>
                         <Box
                             sx={{
                                 position: 'relative',
                                 display: 'flex',
                                 justifyContent: 'center',
-                                '&::before': { // Görselin arkasındaki dekoratif daire
+                                '&::before': {
                                     content: '""',
                                     position: 'absolute',
                                     top: '-10%',
@@ -119,19 +117,18 @@ const HeroSection = () => {
                         >
                             <Box
                                 component="img"
-                                src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=800"
-                                // Yukarıdaki link yerine kendi görselini koyacaksın: src="/assets/hero-image.png"
+                                src="./image/landingpage_photo1.png"
                                 alt="Hayat Ağı İletişim Sistemi"
                                 sx={{
                                     width: '100%',
                                     maxWidth: 600,
                                     height: 'auto',
-                                    borderRadius: 4, // Köşeleri yuvarlat
-                                    boxShadow: '0 20px 40px rgba(0,0,0,0.1)', // Modern, yumuşak gölge
+                                    borderRadius: 4,
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
                                     zIndex: 1,
                                     transition: 'transform 0.3s ease',
                                     '&:hover': {
-                                        transform: 'scale(1.02)' // Üzerine gelince hafif büyüme efekti
+                                        transform: 'scale(1.02)'
                                     }
                                 }}
                             />

@@ -7,6 +7,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import LandingPage from './pages/LandingPage';
+import OverviewPage from './pages/OverviewPage';
 
 import { theme } from './theme';
 import { ROUTES } from './constants/routes';
@@ -24,6 +25,9 @@ function App() {
 
             {/* Public Route - Login */}
             <Route path={ROUTES.LOGIN} element={<Login />} />
+
+            {/* Public Route - Overview Page */}
+            <Route path={ROUTES.OVERVIEW_PAGE} element={<OverviewPage />} />
 
             {/* Protected Routes - Administrator ve Regular User için */}
             <Route
