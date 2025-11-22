@@ -1,7 +1,3 @@
-# hayat-agi-command-center
-Web-based management and visualization interface for the Hayat Ağı disaster communication network. Built with MERN stack to monitor gateway status, visualize mesh topology, and support real-time coordination during emergencies.
-# Hayat Ağı Command Center
-
 **A Web-Based Management and Visualization Interface for a Resilient Disaster Communication Network.**
 
 This project serves as the central nervous system for the "Hayat Ağı" mesh network, providing real-time visualization, device management, and situational awareness for disaster response teams.
