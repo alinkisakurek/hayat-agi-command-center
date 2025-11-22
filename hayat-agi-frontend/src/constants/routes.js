@@ -10,6 +10,7 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   LANDING_PAGE: '/',
+  OVERVIEW_PAGE: '/genel-bakis',
 
   // Protected Routes
   DASHBOARD: '/dashboard',
