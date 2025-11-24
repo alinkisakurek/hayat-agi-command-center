@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import LandingPage from './pages/LandingPage';
 import OverviewPage from './pages/OverviewPage';
@@ -27,6 +28,9 @@ function App() {
 
             {/* Public Route - Login */}
             <Route path={ROUTES.LOGIN} element={<Login />} />
+
+            {/* Public Route - Register */}
+            <Route path={ROUTES.REGISTER} element={<Register />} />
 
             {/* Public Route - Overview Page */}
             <Route path={ROUTES.OVERVIEW_PAGE} element={<OverviewPage />} />

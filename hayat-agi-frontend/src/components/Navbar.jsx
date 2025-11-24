@@ -122,13 +122,22 @@ const Navbar = () => {
                             );
                         })}
                     </Box>
-                    <Button
-                        component={Link}
-                        to={ROUTES.LOGIN}
-                        className="login-btn"
-                    >
-                        Giriş Yap
-                    </Button>
+                    <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
+                        <Button
+                            component={Link}
+                            to={ROUTES.REGISTER}
+                            className="register-btn"
+                        >
+                            Kayıt Ol
+                        </Button>
+                        <Button
+                            component={Link}
+                            to={ROUTES.LOGIN}
+                            className="login-btn"
+                        >
+                            Giriş Yap
+                        </Button>
+                    </Box>
                 </Toolbar>
             </Container>
         </AppBar>
