@@ -11,6 +11,8 @@ export const ROUTES = {
   FORGOT_PASSWORD: '/forgot-password',
   LANDING_PAGE: '/',
   OVERVIEW_PAGE: '/genel-bakis',
+  SOLUTIONS_MOBILE_APP: '/cozumlerimiz/mobil-uygulamamiz',
+  SOLUTIONS_HARDWARE: '/cozumlerimiz/donanimlar',
 
   // Protected Routes
   DASHBOARD: '/dashboard',

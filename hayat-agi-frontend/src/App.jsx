@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import LandingPage from './pages/LandingPage';
 import OverviewPage from './pages/OverviewPage';
+import MobileApp from './pages/MobileApp';
+import Hardware from './pages/Hardware';
 
 import { theme } from './theme';
 import { ROUTES } from './constants/routes';
@@ -28,6 +30,10 @@ function App() {
 
             {/* Public Route - Overview Page */}
             <Route path={ROUTES.OVERVIEW_PAGE} element={<OverviewPage />} />
+
+            {/* Public Route - Mobile App Solution */}
+            <Route path={ROUTES.SOLUTIONS_MOBILE_APP} element={<MobileApp />} />
+            <Route path={ROUTES.SOLUTIONS_HARDWARE} element={<Hardware />} />
 
             {/* Protected Routes - Administrator ve Regular User için */}
             <Route
