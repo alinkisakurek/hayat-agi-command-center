@@ -1,0 +1,4 @@
+/backend/node_modules
+/hayat-agi-frontend/node_modules
+backend/.env
+/hayat-agi-frontend/.vite
