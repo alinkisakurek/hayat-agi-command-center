@@ -10,6 +10,7 @@ import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 
 import '../theme/Navbar.css';
 
@@ -87,14 +88,22 @@ const Navbar = () => {
                                             onClose={handleCloseSolutionsMenu}
                                         >
 
-                                            <MenuItem onClick={handleCloseSolutionsMenu} component={Link} to="/genel-bakis">
+                                            <MenuItem onClick={handleCloseSolutionsMenu} component={Link} to={ROUTES.OVERVIEW_PAGE}>
                                                 <Typography textAlign="center">Genel Bakış</Typography>
                                             </MenuItem>
-                                            <MenuItem onClick={handleCloseSolutionsMenu} component={Link} to="/mobil-uygulama">
+                                            <MenuItem
+                                                onClick={handleCloseSolutionsMenu}
+                                                component={Link}
+                                                to={ROUTES.SOLUTIONS_MOBILE_APP}
+                                            >
                                                 <Typography textAlign="center">Mobil Uygulamamız</Typography>
                                             </MenuItem>
-                                            <MenuItem onClick={handleCloseSolutionsMenu} component={Link} to="/donanimlar">
-                                                <Typography textAlign="center"> Donanımlarımız</Typography>
+                                            <MenuItem
+                                                onClick={handleCloseSolutionsMenu}
+                                                component={Link}
+                                                to={ROUTES.SOLUTIONS_HARDWARE}
+                                            >
+                                                <Typography textAlign="center">Donanımlarımız</Typography>
                                             </MenuItem>
                                         </Menu>
                                     </React.Fragment>
@@ -113,13 +122,22 @@ const Navbar = () => {
                             );
                         })}
                     </Box>
-                    <Button
-                        component={Link}
-                        to="/auth/login"
-                        className="login-btn"
-                    >
-                        Giriş Yap
-                    </Button>
+                    <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
+                        <Button
+                            component={Link}
+                            to={ROUTES.REGISTER}
+                            className="register-btn"
+                        >
+                            Kayıt Ol
+                        </Button>
+                        <Button
+                            component={Link}
+                            to={ROUTES.LOGIN}
+                            className="login-btn"
+                        >
+                            Giriş Yap
+                        </Button>
+                    </Box>
                 </Toolbar>
             </Container>
         </AppBar>

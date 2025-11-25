@@ -5,9 +5,12 @@ import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import LandingPage from './pages/LandingPage';
 import OverviewPage from './pages/OverviewPage';
+import MobileApp from './pages/MobileApp';
+import Hardware from './pages/Hardware';
 
 import { theme } from './theme';
 import { ROUTES } from './constants/routes';
@@ -26,8 +29,15 @@ function App() {
             {/* Public Route - Login */}
             <Route path={ROUTES.LOGIN} element={<Login />} />
 
+            {/* Public Route - Register */}
+            <Route path={ROUTES.REGISTER} element={<Register />} />
+
             {/* Public Route - Overview Page */}
             <Route path={ROUTES.OVERVIEW_PAGE} element={<OverviewPage />} />
+
+            {/* Public Route - Mobile App Solution */}
+            <Route path={ROUTES.SOLUTIONS_MOBILE_APP} element={<MobileApp />} />
+            <Route path={ROUTES.SOLUTIONS_HARDWARE} element={<Hardware />} />
 
             {/* Protected Routes - Administrator ve Regular User için */}
             <Route
