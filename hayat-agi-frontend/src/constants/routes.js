@@ -13,6 +13,8 @@ export const ROUTES = {
   OVERVIEW_PAGE: '/genel-bakis',
   SOLUTIONS_MOBILE_APP: '/cozumlerimiz/mobil-uygulamamiz',
   SOLUTIONS_HARDWARE: '/cozumlerimiz/donanimlar',
+  SUPPORT: '/destek',
+  PRICE: '/fiyatlandirma',
 
   // Protected Routes
   DASHBOARD: '/dashboard',

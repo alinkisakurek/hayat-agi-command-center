@@ -1,58 +1,36 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Container,
   Paper,
-  Card,
-  CardActionArea,
-  CardContent,
-  Avatar,
   Typography,
   Stack,
   TextField,
   Button,
   Alert,
   CircularProgress,
-  IconButton,
+  InputAdornment,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EmailIcon from '@mui/icons-material/Email';
+import LockIcon from '@mui/icons-material/Lock';
+import BadgeIcon from '@mui/icons-material/Badge';
 import { ROUTES } from '../constants/routes';
 
 const Register = () => {
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState(null);
+
+  // Tek bir state yapısı yeterli
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    title: '',
+    email: '',
     password: '',
   });
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleSelectRole = (role) => {
-    setSelectedRole(role);
-    setError('');
-    setFormData({
-      firstName: '',
-      lastName: '',
-      title: '',
-      password: '',
-    });
-  };
-
-  const handleBack = () => {
-    setSelectedRole(null);
-    setError('');
-    setFormData({
-      firstName: '',
-      lastName: '',
-      title: '',
-      password: '',
-    });
-  };
 
   const handleInputChange = (field) => (e) => {
     setFormData({
@@ -67,14 +45,22 @@ const Register = () => {
     setError('');
     setLoading(true);
 
-    // Validasyon
-    if (!formData.firstName || !formData.lastName || !formData.password) {
-      setError('Lütfen tüm zorunlu alanları doldurun');
+    // 1. Boş alan kontrolü
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+      setError('Lütfen tüm alanları doldurun');
       setLoading(false);
       return;
     }
 
-    // Şifre uzunluk kontrolü
+    // 2. Email format kontrolü (Basit regex)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Geçerli bir e-posta adresi giriniz');
+      setLoading(false);
+      return;
+    }
+
+    // 3. Şifre uzunluk kontrolü
     if (formData.password.length < 6) {
       setError('Şifre en az 6 karakter olmalıdır');
       setLoading(false);
@@ -82,394 +68,21 @@ const Register = () => {
     }
 
     try {
-      // TODO: API çağrısı yapılacak
-      console.log('Register data:', { role: selectedRole, ...formData });
-      
-      // Şimdilik başarılı kayıt simülasyonu
+      // TODO: Backend API çağrısı burada yapılacak
+      // Örn: await authService.register(formData);
+      console.log('Kayıt verileri:', formData);
+
+      // Başarılı simülasyonu
       setTimeout(() => {
         setLoading(false);
-        // Başarılı kayıt sonrası login sayfasına yönlendir
         navigate(ROUTES.LOGIN);
       }, 1000);
+
     } catch (err) {
-      setError('Kayıt yapılırken bir hata oluştu');
+      setError('Kayıt işlemi sırasında bir hata oluştu.');
       setLoading(false);
     }
   };
-
-  // Vatandaş kayıt formu
-  const renderCitizenForm = () => (
-    <Container maxWidth="sm">
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          position: 'relative',
-        }}
-      >
-        {/* Geri butonu */}
-        <IconButton
-          onClick={handleBack}
-          sx={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-          }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-
-        {/* Vatandaş Başlığı */}
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{
-            fontWeight: 'bold',
-            mb: 1,
-            color: 'primary.main',
-          }}
-        >
-          Vatandaş
-        </Typography>
-
-        {/* Kayıt OL alt başlığı */}
-        <Typography variant="h6" component="h2" gutterBottom sx={{ mb: 4 }}>
-          Kayıt OL
-        </Typography>
-
-        {/* Form */}
-        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Stack spacing={3}>
-            {/* Ad Input */}
-            <TextField
-              fullWidth
-              id="firstName"
-              label="Ad"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange('firstName')}
-              disabled={loading}
-              required
-              autoFocus
-            />
-
-            {/* Soyad Input */}
-            <TextField
-              fullWidth
-              id="lastName"
-              label="Soyad"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange('lastName')}
-              disabled={loading}
-              required
-            />
-
-            {/* Şifre Input */}
-            <TextField
-              fullWidth
-              id="password"
-              label="Şifre"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              disabled={loading}
-              required
-            />
-
-            {/* Kayıt OL Button */}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              disabled={loading}
-              sx={{ mt: 2, mb: 2, py: 1.5 }}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Kayıt OL'}
-            </Button>
-          </Stack>
-        </Box>
-      </Paper>
-    </Container>
-  );
-
-  // AFAD kayıt formu
-  const renderAFADForm = () => (
-    <Container maxWidth="sm">
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          position: 'relative',
-        }}
-      >
-        {/* Geri butonu */}
-        <IconButton
-          onClick={handleBack}
-          sx={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-          }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-
-        {/* AFAD Başlığı */}
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{
-            fontWeight: 'bold',
-            mb: 1,
-            color: 'primary.main',
-          }}
-        >
-          AFAD
-        </Typography>
-
-        {/* Kayıt OL alt başlığı */}
-        <Typography variant="h6" component="h2" gutterBottom sx={{ mb: 4 }}>
-          Kayıt OL
-        </Typography>
-
-        {/* Form */}
-        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Stack spacing={3}>
-            {/* Adı Input */}
-            <TextField
-              fullWidth
-              id="firstName"
-              label="Adı"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange('firstName')}
-              disabled={loading}
-              required
-              autoFocus
-            />
-
-            {/* Soyadı Input */}
-            <TextField
-              fullWidth
-              id="lastName"
-              label="Soyadı"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange('lastName')}
-              disabled={loading}
-              required
-            />
-
-            {/* Unvanı Input - Opsiyonel */}
-            <TextField
-              fullWidth
-              id="title"
-              label="Unvanı (?)"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange('title')}
-              disabled={loading}
-              helperText="Opsiyonel"
-            />
-
-            {/* Şifre Input */}
-            <TextField
-              fullWidth
-              id="password"
-              label="Şifre"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              disabled={loading}
-              required
-            />
-
-            {/* Kayıt OL Button */}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              disabled={loading}
-              sx={{ mt: 2, mb: 2, py: 1.5 }}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Kayıt OL'}
-            </Button>
-          </Stack>
-        </Box>
-      </Paper>
-    </Container>
-  );
-
-  // Role seçim ekranı
-  const renderRoleSelection = () => (
-    <Container maxWidth="md">
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
-          Kayıt Ol
-        </Typography>
-
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={3}
-          sx={{ width: '100%' }}
-        >
-          {/* AFAD Çalışanı Kartı */}
-          <Card
-            sx={{
-              flex: 1,
-              cursor: 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: 6,
-              },
-            }}
-            onClick={() => handleSelectRole('afad')}
-          >
-            <CardActionArea
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 4,
-                minHeight: 300,
-              }}
-            >
-              <CardContent
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                }}
-              >
-                {/* AFAD Logo - Büyük Daire */}
-                <Avatar
-                  sx={{
-                    width: 120,
-                    height: 120,
-                    bgcolor: 'primary.main',
-                    mb: 3,
-                    fontSize: '2.5rem',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  AFAD
-                </Avatar>
-
-                <Typography variant="h6" component="div" gutterBottom>
-                  AFAD Çalışanı
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  olarak
-                </Typography>
-                <Typography variant="h6" component="div" color="primary.main">
-                  Kayıt Ol
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-
-          {/* Vatandaş Kartı */}
-          <Card
-            sx={{
-              flex: 1,
-              cursor: 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: 6,
-              },
-            }}
-            onClick={() => handleSelectRole('citizen')}
-          >
-            <CardActionArea
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 4,
-                minHeight: 300,
-              }}
-            >
-              <CardContent
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                }}
-              >
-                {/* Vatandaş İkonu - Büyük Daire */}
-                <Avatar
-                  sx={{
-                    width: 120,
-                    height: 120,
-                    bgcolor: 'secondary.main',
-                    mb: 3,
-                  }}
-                >
-                  <PersonIcon sx={{ fontSize: 60 }} />
-                </Avatar>
-
-                <Typography variant="h6" component="div" gutterBottom>
-                  Vatandaş
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  olarak
-                </Typography>
-                <Typography variant="h6" component="div" color="primary.main">
-                  Kayıt Ol
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        </Stack>
-      </Paper>
-    </Container>
-  );
 
   return (
     <Box
@@ -482,14 +95,170 @@ const Register = () => {
         p: 2,
       }}
     >
-      {selectedRole === 'afad' 
-        ? renderAFADForm() 
-        : selectedRole === 'citizen' 
-        ? renderCitizenForm() 
-        : renderRoleSelection()}
+      <Container maxWidth="sm">
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            borderRadius: 4, // Biraz daha yuvarlak hatlar
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          {/* Logo veya İkon Alanı */}
+          <Box
+            sx={{
+              width: 60,
+              height: 60,
+              bgcolor: 'primary.main',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 2,
+            }}
+          >
+            <PersonIcon sx={{ color: 'white', fontSize: 32 }} />
+          </Box>
+
+          <Typography component="h1" variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Aramıza Katıl
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+            Hayat Ağı sistemine erişmek için hesap oluşturun.
+          </Typography>
+
+          {/* Hata Mesajı */}
+          {error && (
+            <Alert severity="error" sx={{ width: '100%', mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          {/* FORM BAŞLANGICI */}
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <Stack spacing={2.5}>
+
+              {/* Ad ve Soyad Yan Yana */}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  fullWidth
+                  id="firstName"
+                  label="Ad"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange('firstName')}
+                  disabled={loading}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <BadgeIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  id="lastName"
+                  label="Soyad"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange('lastName')}
+                  disabled={loading}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <BadgeIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Stack>
+
+              {/* E-posta */}
+              <TextField
+                fullWidth
+                id="email"
+                label="E-posta Adresi"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                disabled={loading}
+                required
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {/* Şifre */}
+              <TextField
+                fullWidth
+                id="password"
+                label="Şifre"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                disabled={loading}
+                required
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {/* Kayıt Butonu */}
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={loading}
+                sx={{
+                  mt: 2,
+                  py: 1.5,
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  fontSize: '1rem'
+                }}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Hesap Oluştur'}
+              </Button>
+            </Stack>
+
+            {/* Giriş Yap Linki */}
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Zaten bir hesabın var mı?{' '}
+                <Link
+                  to={ROUTES.LOGIN}
+                  style={{
+                    color: '#1976d2',
+                    textDecoration: 'none',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Giriş Yap
+                </Link>
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
     </Box>
   );
 };
 
 export default Register;
-

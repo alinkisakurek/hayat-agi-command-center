@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { getGateways, createGateway } = require('../controllers/gatewayController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const gatewayController = require('../controllers/gatewayController');
 
-// /api/gateways
-router.get('/', protect, getGateways);
-router.post('/', protect, authorize('admin'), createGateway);
+// GET /api/gateways -> getGateways 
+router.get('/', gatewayController.getGateways);
+
+// POST /api/gateways -> createGateway
+router.post('/', gatewayController.createGateway);
+
+// DELETE /api/gateways/:id -> deleteGateway 
+router.delete('/:id', gatewayController.deleteGateway);
 
 module.exports = router;

@@ -12,42 +12,37 @@ import { ROUTES } from '../constants/routes';
  * @param {string|string[]} allowedRoles - Bu route'a erişebilecek roller (opsiyonel)
  * @param {boolean} requireAuth - Authentication gerektirip gerektirmediği (default: true)
  */
-const PrivateRoute = ({ 
-  children, 
-  allowedRoles = null, 
-  requireAuth = true 
+const PrivateRoute = ({
+  children,
+  allowedRoles = null
 }) => {
-  const { isAuthenticated, loading, user, hasRole } = useAuth();
+  // 1. BİLET KONTROLÜ (Token var mı?)
+  const token = localStorage.getItem('token');
 
-  // Loading durumunda spinner göster (opsiyonel)
-  if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
-        <p>Yükleniyor...</p>
-      </div>
-    );
+  // 2. KİMLİK KONTROLÜ (User bilgisi ve Rolü)
+  const userString = localStorage.getItem('user');
+  const user = userString ? JSON.parse(userString) : null;
+
+  // --- KURAL 1: Token yoksa (Giriş yapmamışsa) -> Login'e git ---
+  if (!token) {
+    // replace: Geri butonuna basınca tekrar buraya gelmesini engeller
+    return <Navigate to="/auth/login" replace />;
   }
 
-  // Authentication gerekiyorsa ve kullanıcı giriş yapmamışsa login'e yönlendir
-  if (requireAuth && !isAuthenticated) {
-    return <Navigate to={ROUTES.LOGIN} replace />;
-  }
-
-  // Role kontrolü yapılıyorsa (Görev gereği: Administrator ve Regular User permissions)
+  // --- KURAL 2: Rol Kontrolü (Varsa) ---
   if (allowedRoles && user) {
-    const hasAccess = hasRole(allowedRoles);
-    if (!hasAccess) {
-      // Yetkisiz erişim - Dashboard'a yönlendir
-      return <Navigate to={ROUTES.DASHBOARD} replace />;
+    // allowedRoles tek bir string ('admin') veya dizi (['admin', 'editor']) olabilir.
+    // Hepsini diziye çevirip kontrol edelim.
+    const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+
+    if (!rolesArray.includes(user.role)) {
+      // Kullanıcının rolü izin verilenler listesinde yoksa -> Dashboard'a at
+      // (Veya "403 Unauthorized" sayfasına)
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
-  // Tüm kontroller geçildi, children'ı render et
+  // --- KURAL 3: Her şey yolundaysa -> Sayfayı (Çocuğu) göster ---
   return children;
 };
 
