@@ -29,7 +29,7 @@ We have successfully completed the initial phase of the project, focusing on est
 - [x] **GIS Research:** Conducted research on Leaflet and Mapbox for the mapping interface.
 
 ---
-## 🚀 Project Progress: Sprint 4 (Initial Setup & Architecture)
+## 🚀 Project Progress: Sprint 4 
 1. Design and Planning (Completed) We started the process by defining the project architecture and user flows.
 
 Wireframing: I sketched wireframes for the Landing Page and Dashboard to clarify exactly how the UI would look.
