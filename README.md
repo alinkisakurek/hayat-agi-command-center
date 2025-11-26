@@ -113,14 +113,6 @@ The React application (built with Vite) serves the user interface.
 
 ---
 
-### 🔐 Environment Variables (.env)
-
-For the backend to function correctly, create a `.env` file in the `backend/` folder with the following keys:
-
-```text
-PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/hayatagi_db
-JWT_SECRET=your_secret_key_here
 
 ## 👥 Development Team
 
