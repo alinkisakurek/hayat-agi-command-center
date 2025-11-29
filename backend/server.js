@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const { connectDB } = require('./config/db');
 const { loadEnv } = require('./config');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
@@ -11,9 +12,21 @@ loadEnv();
 const app = express();
 
 // Middlewares
-app.use(cors());
+// CORS
+const FRONTEND_URL = process.env.FRONTEND_URL;
+if (FRONTEND_URL) {
+  app.use(
+    cors({
+      origin: FRONTEND_URL,
+      credentials: true,
+    })
+  );
+} else {
+  app.use(cors());
+}
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(cookieParser());
 
 // Connect to the database
 connectDB();
