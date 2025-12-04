@@ -29,6 +29,7 @@ import CitizenDevices from './pages/CitizenDevices';
 import CitizenEmergency from './pages/CitizenEmergency';
 import CitizenMessages from './pages/CitizenMessages';
 import CitizenSettings from './pages/CitizenSettings';
+import CitizenCampusInfo from './pages/CitizenCampusInfo';
 
 import { theme } from './theme';
 import { ROUTES } from './constants/routes';
@@ -67,6 +68,7 @@ function App() {
 
               {/* 2. Diğer Sayfalar */}
               <Route path="cihazlarim" element={<CitizenDevices />} />
+              <Route path="yerleske-bilgileri" element={<CitizenCampusInfo />} />
               <Route path="acil-durum" element={<CitizenEmergency />} />
               <Route path="mesajlar" element={<CitizenMessages />} />
               <Route path="ayarlar" element={<CitizenSettings />} />

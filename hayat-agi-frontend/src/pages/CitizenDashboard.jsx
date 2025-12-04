@@ -34,12 +34,14 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DevicesIcon from '@mui/icons-material/Devices';
 import SecurityIcon from '@mui/icons-material/Security';
+import LocationCityIcon from '@mui/icons-material/LocationCity';
 
 const drawerWidth = 280;
 
 const menuItems = [
   { text: 'Genel Bakış', icon: <HomeIcon />, path: '/panel' },
   { text: 'Cihazlarım', icon: <DevicesIcon />, path: '/panel/cihazlarim' },
+  { text: 'Yerleşke Bilgileri', icon: <LocationCityIcon />, path: '/panel/yerleske-bilgileri' },
   { text: 'Acil Durum', icon: <ShieldIcon />, path: '/panel/acil-durum' },
   { text: 'Mesajlar', icon: <MessageIcon />, path: '/panel/mesajlar' },
   { text: 'Ayarlar', icon: <SettingsIcon />, path: '/panel/ayarlar' }
