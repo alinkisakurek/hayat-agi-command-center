@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Container, Grid, Typography, Card, CardContent, Stack, LinearProgress, Chip, Button, Divider } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Box, Grid, Typography, Card, CardContent, Stack, LinearProgress, Chip, Button, Divider } from '@mui/material';
 import RouterIcon from '@mui/icons-material/Router';
 import BatteryStdIcon from '@mui/icons-material/BatteryStd';
 import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
@@ -31,6 +32,7 @@ const myGateways = [
 ];
 
 const CitizenDevices = () => {
+    const navigate = useNavigate();
     const getBatteryColor = (level) => {
         if (level > 50) return "success";
         if (level > 20) return "warning";
@@ -39,13 +41,22 @@ const CitizenDevices = () => {
 
     return (
         <Box>
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" fontWeight="bold" color="primary.main">
-                    Cihazlarım
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    Afet durumuna hazırlık için cihazlarınızın durumunu buradan takip edebilirsiniz.
-                </Typography>
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box>
+                    <Typography variant="h4" fontWeight="bold" color="primary.main">
+                        Cihazlarım
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Afet durumuna hazırlık için cihazlarınızın durumunu buradan takip edebilirsiniz.
+                    </Typography>
+                </Box>
+                <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => navigate('/panel/cihazlarim/ekle')}
+                >
+                    Cihaz Ekle
+                </Button>
             </Box>
 
             <Grid container spacing={3}>
