@@ -68,6 +68,51 @@ In the next step, we will complete the visualization aspect of the project by pi
 
 This project utilizes a **MERN Stack** (MongoDB, Express, React, Node.js) structure. Follow the steps below to set up and run the application locally.
 
+
+## 🚀 Recent Updates: Sprint 4 (Advanced Features & Integration)
+<img width="858" height="863" alt="image" src="https://github.com/user-attachments/assets/2a3c8dc6-a5ca-447f-98f9-1db5f4a7882a" />
+
+We have significantly expanded the capabilities of the platform, focusing on the **Citizen Interface** and **Real-time Visualization** for Admins.
+
+### 🗺️ 1. Admin Live Map Integration
+The Admin Dashboard now features a dynamic map interface powered by **Leaflet**.
+- **Visualizes all active gateways** on a geographical map using real-time coordinates.
+- Provides instant situational awareness for disaster response coordinators.
+- *Status:* Implementation completed & merged to main.
+
+### 🏠 2. Citizen Dashboard & Household Profiling
+A dedicated interface for citizens has been developed to enhance rescue prioritization.
+- **Device Monitoring:** Users can track the battery and signal status of their own gateways.
+- **Household Profiling (Critical Feature):** Users can input critical household data (Number of Children, Elderly, Medical Conditions) during device registration.
+- **Purpose:** This data allows the system to calculate a **"Priority Score"** for each household, helping rescue teams triage effectively during an earthquake.
+
+---
+
+## 🎯 MVP Scope & Features
+
+This project implements the core user flows for both Administrators and Citizens:
+
+### 1. Public Landing Page
+- Modern introduction to the Hayat Ağı ecosystem.
+- Overview of hardware components (ESP32, LoRa) and mobile application solutions.
+
+### 2. Authentication System (RBAC)
+- **Secure Login/Register:** Role-based access control distinguishing between **Admins** and **Citizens**.
+- **Form Validation:** Real-time feedback and error handling for user inputs.
+
+### 3. Admin Dashboard (Command Center)
+- **Gateway Management:**
+  - **Listing:** View all gateways with advanced filtering (Status, Battery Level, Search).
+  - **CRUD Operations:** Add new devices and remove faulty ones.
+- **Live Map:** Visualizing device locations and network topology.
+
+### 4. Citizen Panel
+- **Personal Dashboard:** Monitoring own gateway status.
+- **Emergency Profile:** Managing critical contact info and household risk assessment data.
+
+---
+
+
 ### Prerequisites
 * Node.js (v16 or higher)
 * MongoDB (Local instance or Atlas URI)
