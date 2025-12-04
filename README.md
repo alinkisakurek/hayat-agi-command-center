@@ -144,7 +144,7 @@ The React application (built with Vite) serves the user interface.
 
 1.  Navigate to the frontend directory:
     ```bash
-    cd frontend
+    cd hayat-agi-frontend
     ```
 2.  Install client dependencies (Required for Material UI & Axios):
     ```bash
