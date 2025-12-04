@@ -22,8 +22,15 @@ import Dashboard from './pages/Dashboard'; // Admin Layout (Sidebar + Header)
 import GatewayManager from './pages/GatewayManager'; // Admin Gateway Listesi (CRUD)
 import AddGateway from './pages/AddGateway'; // Admin Ekleme Formu
 
-// Vatandaş Sayfası
+// Vatandaş Sayfaları
 import CitizenDashboard from './pages/CitizenDashboard';
+import CitizenOverview from './pages/CitizenOverview';
+import CitizenDevices from './pages/CitizenDevices';
+import CitizenEmergency from './pages/CitizenEmergency';
+import CitizenMessages from './pages/CitizenMessages';
+import CitizenSettings from './pages/CitizenSettings';
+import CitizenCampusInfo from './pages/CitizenCampusInfo';
+import AddDeviceWizard from './pages/citizen/AddDeviceWizard';
 
 import { theme } from './theme';
 import { ROUTES } from './constants/routes';
@@ -48,7 +55,7 @@ function App() {
             <Route path={ROUTES.SUPPORT} element={<HelpPage />} />
             <Route path={ROUTES.PRICE} element={<OurPrice />} />
 
-            {/* --- VATANDAŞ PANELİ --- */}
+            {/* --- VATANDAŞ PANELİ (İç İçe Rotalama) --- */}
             <Route
               path="/panel"
               element={
@@ -56,7 +63,18 @@ function App() {
                   <CitizenDashboard />
                 </PrivateRoute>
               }
-            />
+            >
+              {/* 1. Varsayılan Açılış: Genel Bakış */}
+              <Route index element={<CitizenOverview />} />
+
+              {/* 2. Diğer Sayfalar */}
+              <Route path="cihazlarim" element={<CitizenDevices />} />
+              <Route path="cihazlarim/ekle" element={<AddDeviceWizard />} />
+              <Route path="yerleske-bilgileri" element={<CitizenCampusInfo />} />
+              <Route path="acil-durum" element={<CitizenEmergency />} />
+              <Route path="mesajlar" element={<CitizenMessages />} />
+              <Route path="ayarlar" element={<CitizenSettings />} />
+            </Route>
 
 
             {/* --- ADMIN DASHBOARD (İç İçe Rotalama) --- */}
