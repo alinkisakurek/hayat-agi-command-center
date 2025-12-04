@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Typography, Grid } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 import MapComponent from '../components/MapComponent';
 import GatewayList from '../components/GatewayList';
 import GatewayDetailCard from '../components/GatewayDetailCard';
@@ -38,12 +38,13 @@ const LiveMap = () => {
       setGateways(formattedData);
       
       // Eğer seçili gateway varsa, güncellenmiş veriyi bul ve güncelle
-      if (selectedGateway) {
-        const updated = formattedData.find(gw => gw._id === selectedGateway._id);
-        if (updated) {
-          setSelectedGateway(updated);
+      setSelectedGateway(prev => {
+        if (prev) {
+          const updated = formattedData.find(gw => gw._id === prev._id);
+          return updated || prev;
         }
-      }
+        return prev;
+      });
     } catch (err) {
       console.error('Gateway verileri yüklenirken hata:', err);
       setError('Veriler yüklenirken bir hata oluştu. Lütfen internet bağlantınızı kontrol edin.');
@@ -51,17 +52,17 @@ const LiveMap = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [selectedGateway]);
+  }, []);
 
   // İlk yükleme
   useEffect(() => {
     loadGateways(true);
-  }, []);
+  }, [loadGateways]);
 
   // Periyodik güncelleme (5 saniyede bir)
   useEffect(() => {
     const interval = setInterval(() => {
-      loadGateways();
+      loadGateways(false);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -79,20 +80,35 @@ const LiveMap = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 120px)', width: '100%', minHeight: '600px', p: 2 }}>
-      <Grid container spacing={2} sx={{ height: '100%', width: '100%' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: 2,
+        height: '100%', 
+        width: '100%' 
+      }}>
         {/* Sol Panel - Gateway Listesi */}
-        <Grid item xs={12} md={3} sx={{ height: '100%', display: 'flex', minHeight: '500px' }}>
-          <Box sx={{ height: '100%', width: '100%' }}>
-            <GatewayList
-              gateways={gateways}
-              selectedGateway={selectedGateway}
-              onGatewaySelect={handleGatewaySelect}
-            />
-          </Box>
-        </Grid>
+        <Box sx={{ 
+          width: { xs: '100%', md: '280px' },
+          height: '100%', 
+          display: 'flex', 
+          minHeight: '500px',
+          flexShrink: 0
+        }}>
+          <GatewayList
+            gateways={gateways}
+            selectedGateway={selectedGateway}
+            onGatewaySelect={handleGatewaySelect}
+          />
+        </Box>
 
         {/* Orta Panel - Harita */}
-        <Grid item xs={12} md={6} sx={{ height: '100%', minHeight: '500px', display: 'flex', flex: 1 }}>
+        <Box sx={{ 
+          flex: '1 1 auto',
+          height: '100%', 
+          minHeight: '500px', 
+          display: 'flex'
+        }}>
           <Paper
             elevation={2}
             sx={{
@@ -123,15 +139,19 @@ const LiveMap = () => {
               isRefreshing={isRefreshing}
             />
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Sağ Panel - Gateway Detayları */}
-        <Grid item xs={12} md={3} sx={{ height: '100%', display: 'flex', minHeight: '500px' }}>
-          <Box sx={{ height: '100%', width: '100%' }}>
-            <GatewayDetailCard gateway={selectedGateway} />
-          </Box>
-        </Grid>
-      </Grid>
+        <Box sx={{ 
+          width: { xs: '100%', md: '350px' },
+          height: '100%', 
+          display: 'flex', 
+          minHeight: '500px',
+          flexShrink: 0
+        }}>
+          <GatewayDetailCard gateway={selectedGateway} />
+        </Box>
+      </Box>
     </Box>
   );
 };
