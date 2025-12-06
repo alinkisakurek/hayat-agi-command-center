@@ -65,6 +65,7 @@ const AddGateway = () => {
                             label="Enlem (Latitude)"
                             name="latitude"
                             type="number"
+                            inputProps={{ step: "any" }}
                             fullWidth
                             required
                             onChange={handleChange}
@@ -73,6 +74,7 @@ const AddGateway = () => {
                             label="Boylam (Longitude)"
                             name="longitude"
                             type="number"
+                            inputProps={{ step: "any" }}
                             fullWidth
                             required
                             onChange={handleChange}
