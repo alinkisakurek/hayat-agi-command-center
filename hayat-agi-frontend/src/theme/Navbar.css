@@ -1,0 +1,129 @@
+:root {
+    --md-sys-color-primary: rgb(0 40 103);
+    --md-sys-color-surface-tint: rgb(0 87 204);
+    --md-sys-color-on-primary: rgb(255 255 255);
+    --md-sys-color-primary-container: rgb(0 68 161);
+    --md-sys-color-on-primary-container: rgb(255 255 255);
+
+    --md-sys-color-secondary: rgb(15 42 93);
+    --md-sys-color-on-secondary: rgb(255 255 255);
+    --md-sys-color-secondary-container: rgb(48 72 124);
+    --md-sys-color-on-secondary-container: rgb(255 255 255);
+
+    --md-sys-color-tertiary: rgb(27 50 0);
+    --md-sys-color-on-tertiary: rgb(255 255 255);
+    --md-sys-color-tertiary-container: rgb(48 82 0);
+    --md-sys-color-on-tertiary-container: rgb(255 255 255);
+
+    --md-sys-color-error: rgb(96 0 4);
+    --md-sys-color-on-error: rgb(255 255 255);
+    --md-sys-color-error-container: rgb(152 0 10);
+    --md-sys-color-on-error-container: rgb(255 255 255);
+
+    --md-sys-color-background: rgb(250 248 255);
+    --md-sys-color-on-background: rgb(25 27 35);
+    --md-sys-color-surface: rgb(250 248 255);
+    --md-sys-color-on-surface: rgb(0 0 0);
+    --md-sys-color-surface-variant: rgb(222 226 243);
+    --md-sys-color-on-surface-variant: rgb(0 0 0);
+
+    --md-sys-color-outline: rgb(39 44 57);
+    --md-sys-color-outline-variant: rgb(68 73 87);
+    --md-sys-color-shadow: rgb(0 0 0);
+    --md-sys-color-scrim: rgb(0 0 0);
+
+    --md-sys-color-inverse-surface: rgb(46 48 56);
+    --md-sys-color-inverse-on-surface: rgb(255 255 255);
+    --md-sys-color-inverse-primary: rgb(176 198 255);
+
+    --md-sys-color-primary-fixed: rgb(0 68 161);
+    --md-sys-color-on-primary-fixed: rgb(255 255 255);
+    --md-sys-color-primary-fixed-dim: rgb(0 47 116);
+    --md-sys-color-on-primary-fixed-variant: rgb(255 255 255);
+
+    --md-sys-color-secondary-fixed: rgb(48 72 124);
+    --md-sys-color-on-secondary-fixed: rgb(255 255 255);
+    --md-sys-color-secondary-fixed-dim: rgb(23 49 100);
+    --md-sys-color-on-secondary-fixed-variant: rgb(255 255 255);
+
+    --md-sys-color-tertiary-fixed: rgb(48 82 0);
+    --md-sys-color-on-tertiary-fixed: rgb(255 255 255);
+    --md-sys-color-tertiary-fixed-dim: rgb(32 57 0);
+    --md-sys-color-on-tertiary-fixed-variant: rgb(255 255 255);
+
+    --md-sys-color-surface-dim: rgb(183 184 195);
+    --md-sys-color-surface-bright: rgb(250 248 255);
+    --md-sys-color-surface-container-lowest: rgb(255 255 255);
+    --md-sys-color-surface-container-low: rgb(239 240 251);
+    --md-sys-color-surface-container: rgb(225 226 237);
+    --md-sys-color-surface-container-high: rgb(211 212 223);
+    --md-sys-color-surface-container-highest: rgb(197 198 209);
+
+    --md-extended-color-custom-color1-color: rgb(36 0 93);
+    --md-extended-color-custom-color1-on-color: rgb(255 255 255);
+    --md-extended-color-custom-color1-color-container: rgb(60 5 143);
+    --md-extended-color-custom-color1-on-color-container: rgb(242 233 255);
+}
+
+.custom-appbar {
+    background-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-on-primary) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+.nav-btn {
+    color: var(--md-sys-color-on-primary) !important;
+    font-weight: 500 !important;
+    margin: 0 8px !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+}
+
+.nav-btn:hover {
+    background-color: var(--md-sys-color-primary-container) !important;
+}
+
+.logo-text {
+    font-family: monospace, sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3rem !important;
+    color: var(--md-sys-color-on-primary) !important;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+}
+
+.logo-text:hover {
+    opacity: 0.8;
+}
+
+.login-btn {
+    background-color: var(--md-sys-color-on-primary) !important;
+    color: var(--md-sys-color-primary) !important;
+    font-weight: bold !important;
+    border-radius: 24px !important;
+    padding: 6px 24px !important;
+    margin-left: 16px !important;
+    border: 2px solid transparent !important;
+    transition: all 0.3s ease !important;
+}
+
+.login-btn:hover {
+    background-color: transparent !important;
+    color: var(--md-sys-color-on-primary) !important;
+    border: 2px solid var(--md-sys-color-on-primary) !important;
+}
+
+.register-btn {
+    background-color: transparent !important;
+    color: var(--md-sys-color-on-primary) !important;
+    font-weight: bold !important;
+    border-radius: 24px !important;
+    padding: 6px 22px !important;
+    border: 2px solid var(--md-sys-color-on-primary) !important;
+    transition: all 0.3s ease !important;
+}
+
+.register-btn:hover {
+    background-color: var(--md-sys-color-on-primary) !important;
+    color: var(--md-sys-color-primary) !important;
+}

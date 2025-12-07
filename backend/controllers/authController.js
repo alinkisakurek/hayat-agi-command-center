@@ -1,56 +1,4 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
-// helpers
-function signAccessToken(user) {
-  const payload = { id: user._id, role: user.role };
-  const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'devaccesssecret';
-  const expiresIn = process.env.JWT_ACCESS_EXPIRES || '15m';
-  return jwt.sign(payload, secret, { expiresIn });
-}
-
-function signRefreshToken(user) {
-  const payload = { id: user._id, v: user.tokenVersion };
-  const secret = process.env.JWT_REFRESH_SECRET || 'devrefreshsecret';
-  const expiresIn = process.env.JWT_REFRESH_EXPIRES || '7d';
-  return jwt.sign(payload, secret, { expiresIn });
-}
-
-function setRefreshCookie(res, token) {
-  const isProd = (process.env.NODE_ENV || 'development') === 'production';
-  const secure = String(process.env.COOKIE_SECURE || (isProd ? 'true' : 'false')).toLowerCase() === 'true';
-  res.cookie('refresh_token', token, {
-    httpOnly: true,
-    secure,
-    sameSite: secure ? 'none' : 'lax',
-    path: '/auth/refresh',
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-  });
-}
-
-function clearRefreshCookie(res) {
-  res.clearCookie('refresh_token', { path: '/auth/refresh' });
-}
-
-function publicUser(u) {
-  return { id: u._id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt };
-}
-
-// POST /auth/register
-async function register(req, res, next) {
-  try {
-    const { name, email, password, role } = req.body || {};
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'name, email and password are required' });
-    }
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(409).json({ message: 'Email already in use' });
-    const user = await User.create({ name, email, password, role });
-    return res.status(201).json({ user: publicUser(user) });
-  } catch (err) {
-    next(err);
-  }
-}
+// Mock Auth Controller - Test için basit login/register
 
 // POST /auth/login
 async function login(req, res, next) {
@@ -119,27 +67,47 @@ async function refresh(req, res, next) {
   }
 }
 
-// POST /auth/logout
-async function logout(req, res, next) {
-  try {
-    if (req.user) {
-      // Invalidate all refresh tokens for this user
-      await User.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
-    }
-    clearRefreshCookie(res);
-    return res.status(204).send();
-  } catch (err) {
-    next(err);
-  }
-}
+/*module.exports = { dummyLogin }; */
 
-// GET /auth/me
-async function me(req, res, next) {
-  try {
-    return res.json({ user: publicUser(req.user) });
-  } catch (err) {
-    next(err);
-  }
-}
+exports.login = (req, res) => {
+  const { email, password } = req.body;
 
-module.exports = { register, login, refresh, logout, me };
+  console.log("Mock Login Denemesi:", email, password);
+
+  // Admin Login
+  if (email === 'admin@hayatagi.com' && password === '123456') {
+    return res.status(200).json({
+      message: 'Giriş başarılı (Mock)',
+      token: 'mock-token-12345-abcdef-bu-bir-sahte-tokendir',
+      user: {
+        id: 'user_1',
+        name: 'Alin Kısakürek',
+        email: email,
+        role: 'admin'
+      }
+    });
+  }
+
+  // Vatandaş Login
+  if (email === 'vatandas@hayatagi.com' && password === '123456') {
+    return res.status(200).json({
+      message: 'Giriş başarılı (Mock)',
+      token: 'mock-token-vatandas-67890-xyz',
+      user: {
+        id: 'user_2',
+        name: 'Berke Kuş',
+        email: email,
+        role: 'user'
+      }
+    });
+  }
+
+  // Hatalı giriş
+  return res.status(401).json({ 
+    error: 'Hatalı e-posta veya şifre! (Mock: admin@hayatagi.com veya vatandas@hayatagi.com / 123456 deneyin)' 
+  });
+};
+
+exports.register = (req, res) => {
+  res.status(200).json({ message: 'Kayıt başarılı (Simülasyon)' });
+};

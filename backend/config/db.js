@@ -1,16 +1,21 @@
 const mongoose = require('mongoose');
 
-async function connectDB() {
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hayat-agi';
-  try {
-    await mongoose.connect(uri, {
-      // keep options minimal; Mongoose 8 uses sane defaults
-    });
-    console.log('MongoDB connection successful');
-  } catch (err) {
-    console.error('MongoDB connection error:', err.message);
-    process.exit(1);
-  }
-}
+const connectDB = async () => {
+    if (!process.env.MONGO_URI) {
+        console.warn('MONGO_URI not set — skipping MongoDB connection (development mode)');
+        return;
+    }
 
-module.exports = { connectDB };
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log('MongoDB connected successfully');
+    } catch (error) {
+        console.error('MongoDB connection error:', error.message);
+        // In development we don't exit the process; let app run even without DB.
+    }
+};
+
+module.exports = connectDB;

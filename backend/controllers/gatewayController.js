@@ -1,85 +1,69 @@
-// Logic to manage the state of gateway devices
-const mongoose = require('mongoose');
-const Gateway = require('../models/Gateway');
+// Mock data storage
+let mockGateways = [
+  {
+    _id: '1',
+    name: 'Ön Kapı',
+    status: 'active',
+    battery: 85,
+    signal_quality: 'strong',
+    location: { lat: 41.0082, lng: 28.9784 },
+    connected_devices: 3,
+    uptime: 1200,
+    last_seen: new Date(),
+  },
+  {
+    _id: '2',
+    name: 'Arka Bahçe',
+    status: 'active',
+    battery: 60,
+    signal_quality: 'medium',
+    location: { lat: 41.0080, lng: 28.9785 },
+    connected_devices: 2,
+    uptime: 950,
+    last_seen: new Date(),
+  },
+];
 
-// GET /api/gateways
-async function getGateways(req, res, next) {
+let nextId = 3;
+
+// Get All Gateways
+exports.getGateways = async (req, res) => {
   try {
-    const list = await Gateway.find().lean();
-    res.json(list);
-  } catch (err) {
-    next(err);
+    res.status(200).json(mockGateways);
+  } catch (error) {
+    console.error('Error fetching gateways:', error);
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
-// POST /api/gateways
-async function createGateway(req, res, next) {
+// Create New Gateway
+exports.createGateway = async (req, res) => {
   try {
-    const gw = await Gateway.create(req.body);
-    res.status(201).json(gw);
-  } catch (err) {
-    next(err);
+    const newGateway = {
+      _id: String(nextId++),
+      name: req.body.name,
+      status: req.body.status || 'inactive',
+      battery: 0,
+      signal_quality: 'none',
+      location: req.body.location,
+      connected_devices: 0,
+      uptime: 0,
+      last_seen: new Date(),
+    };
+    mockGateways.push(newGateway);
+    res.status(201).json(newGateway);
+  } catch (error) {
+    console.error('Error creating gateway:', error);
+    res.status(400).json({ message: error.message });
   }
-}
+};
 
-// GET /api/gateways/:id
-async function getGatewayById(req, res, next) {
+// Delete Gateway
+exports.deleteGateway = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid gateway id' });
-    }
-    const gw = await Gateway.findById(id).lean();
-    if (!gw) {
-      return res.status(404).json({ message: 'Gateway not found' });
-    }
-    res.json(gw);
-  } catch (err) {
-    next(err);
+    mockGateways = mockGateways.filter(gw => gw._id !== req.params.id);
+    res.json({ message: 'Gateway silindi' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-}
-
-// PUT /api/gateways/:id
-async function updateGateway(req, res, next) {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid gateway id' });
-    }
-    const updated = await Gateway.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!updated) {
-      return res.status(404).json({ message: 'Gateway not found' });
-    }
-    res.json(updated);
-  } catch (err) {
-    next(err);
-  }
-}
-
-// DELETE /api/gateways/:id
-async function deleteGateway(req, res, next) {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid gateway id' });
-    }
-    const deleted = await Gateway.findByIdAndDelete(id);
-    if (!deleted) {
-      return res.status(404).json({ message: 'Gateway not found' });
-    }
-    res.status(204).send();
-  } catch (err) {
-    next(err);
-  }
-}
-
-module.exports = {
-  getGateways,
-  createGateway,
-  getGatewayById,
-  updateGateway,
-  deleteGateway,
 };

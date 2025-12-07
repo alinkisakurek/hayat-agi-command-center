@@ -1,0 +1,27 @@
+/* Leaflet harita container için özel stiller */
+.leaflet-container {
+    height: 100% !important;
+    width: 100% !important;
+    min-height: 500px !important;
+    z-index: 1 !important;
+    position: relative !important;
+    background-color: #e0e0e0 !important;
+}
+
+.leaflet-map-pane {
+    height: 100% !important;
+    min-height: 500px !important;
+}
+
+.leaflet-tile-pane {
+    height: 100% !important;
+}
+
+.leaflet-overlay-pane {
+    height: 100% !important;
+}
+
+/* Harita tile'ları için */
+.leaflet-tile-container {
+    height: 100% !important;
+}
