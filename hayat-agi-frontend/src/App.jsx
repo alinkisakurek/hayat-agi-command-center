@@ -21,6 +21,8 @@ import OurPrice from './pages/OurPrice'; // Dosya ismin OurPrice.jsx (Tekil)
 import Dashboard from './pages/Dashboard'; // Admin Layout (Sidebar + Header)
 import GatewayManager from './pages/GatewayManager'; // Admin Gateway Listesi (CRUD)
 import AddGateway from './pages/AddGateway'; // Admin Ekleme Formu
+import LiveMap from './pages/LiveMap'; // Canlı Harita Sayfası
+
 
 // Vatandaş Sayfaları
 import CitizenDashboard from './pages/CitizenDashboard';
@@ -96,8 +98,7 @@ function App() {
               {/* 3. Yeni Ekleme (/dashboard/add-gateway) */}
               <Route path="add-gateway" element={<AddGateway />} />
 
-              {/* Harita Sayfası (Dosyası yoksa geçici text) */}
-              <Route path="harita" element={<div>Canlı Harita Yakında...</div>} />
+              <Route path="harita" element={<LiveMap />} />
             </Route>
 
 
