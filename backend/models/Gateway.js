@@ -26,6 +26,18 @@ const gatewaySchema = new Schema({
     lat: { type: Number, required: true },
     lng: { type: Number, required: true }
   },
+  address: {
+    street: { type: String, default: '' },
+    buildingNo: { type: String, default: '' },
+    district: { type: String, default: '' },
+    city: { type: String, default: '' },
+    postalCode: { type: String, default: '' }
+  },
+  serialNumber: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   connected_devices: {
     type: Number,
     default: 0

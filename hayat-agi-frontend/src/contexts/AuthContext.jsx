@@ -20,6 +20,23 @@ export const AuthProvider = ({ children }) => {
   // Uygulama başladığında session kontrolü yap
   useEffect(() => {
     const initAuth = async () => {
+      // Önce localStorage'dan kontrol et
+      const token = localStorage.getItem('token');
+      const userString = localStorage.getItem('user');
+      
+      if (token && userString) {
+        try {
+          const userData = JSON.parse(userString);
+          setUser(userData.user || userData); // Backend response formatına göre
+          setIsAuthenticated(true);
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error('User data parse error:', error);
+        }
+      }
+      
+      // Eğer localStorage'da yoksa API'den kontrol et
       try {
         const userData = await checkSession();
         setUser(userData);
@@ -43,9 +60,16 @@ export const AuthProvider = ({ children }) => {
    */
   const login = async (email, password) => {
     try {
-      const userData = await loginService(email, password);
+      const response = await loginService(email, password);
+      // Backend response formatına göre user bilgisini al
+      const userData = response.user || response;
       setUser(userData);
       setIsAuthenticated(true);
+      // localStorage'ı da güncelle
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
       return { success: true, user: userData };
     } catch (error) {
       return {
@@ -99,6 +123,22 @@ export const AuthProvider = ({ children }) => {
     return hasRole(USER_ROLES.USER) || hasRole(USER_ROLES.REGULAR);
   };
 
+  /**
+   * localStorage'dan user bilgisini yeniden yükler
+   */
+  const refreshUser = () => {
+    const userString = localStorage.getItem('user');
+    if (userString) {
+      try {
+        const userData = JSON.parse(userString);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('User data parse error:', error);
+      }
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -108,6 +148,7 @@ export const AuthProvider = ({ children }) => {
     hasRole,
     isAdmin,
     isRegularUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

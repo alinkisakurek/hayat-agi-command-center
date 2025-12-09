@@ -165,12 +165,36 @@ const GatewayDetailCard = ({ gateway }) => {
                             Konum
                         </Typography>
                     </Stack>
-                    <Typography variant="body2" color="text.secondary">
-                        Enlem: {gateway.location?.lat?.toFixed(6) || 'N/A'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Boylam: {gateway.location?.lng?.toFixed(6) || 'N/A'}
-                    </Typography>
+                    {gateway.address && (gateway.address.street || gateway.address.city) ? (
+                        <Box>
+                            <Typography variant="body2" fontWeight="600" sx={{ mb: 0.5 }}>
+                                {gateway.address.street || ''} {gateway.address.buildingNo || ''}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {gateway.address.district || ''} {gateway.address.district && gateway.address.city ? ', ' : ''}
+                                {gateway.address.city || ''}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {gateway.address.province || ''} {gateway.address.postalCode ? `(${gateway.address.postalCode})` : ''}
+                            </Typography>
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="caption" color="text.secondary" display="block">
+                                Enlem: {gateway.location?.lat?.toFixed(6) || 'N/A'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                                Boylam: {gateway.location?.lng?.toFixed(6) || 'N/A'}
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <Box>
+                            <Typography variant="body2" color="text.secondary">
+                                Enlem: {gateway.location?.lat?.toFixed(6) || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Boylam: {gateway.location?.lng?.toFixed(6) || 'N/A'}
+                            </Typography>
+                        </Box>
+                    )}
                 </Box>
 
                 <Divider sx={{ my: 2 }} />

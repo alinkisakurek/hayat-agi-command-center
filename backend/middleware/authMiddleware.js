@@ -18,18 +18,44 @@ const protect = async (req, res, next) => {
 
       // 4. Token içindeki ID'den kullanıcıyı bul ve req.user'a ata
       // (Şifreyi getirme - select('-password'))
-      req.user = await User.findById(decoded.id).select('-password');
+      const mongoose = require('mongoose');
+      const isMongoDBConnected = mongoose.connection.readyState === 1;
+
+      if (isMongoDBConnected) {
+        req.user = await User.findById(decoded.id).select('-password');
+        if (!req.user) {
+          return res.status(401).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+      } else {
+        // MongoDB bağlı değilse token'dan gelen bilgileri kullan
+        // Mock kullanıcı için token içindeki bilgileri kullan
+        // Token'da id ve role var, name ve email yoksa varsayılan değerler kullan
+        req.user = {
+          _id: decoded.id,
+          role: decoded.role || 'admin',
+          name: decoded.name || (decoded.role === 'admin' ? 'Admin' : 'Kullanıcı'),
+          email: decoded.email || (decoded.role === 'admin' ? 'admin@hayatagi.com' : 'user@hayatagi.com')
+        };
+        console.log('MongoDB bağlı değil, token\'dan kullanıcı bilgisi alındı:', req.user);
+      }
 
       next(); // Tamamdır, sıradaki fonksiyona (me controller'ına) geç
     } catch (error) {
-      console.error(error);
+      console.error('Token doğrulama hatası:', error);
       res.status(401).json({ message: 'Yetkisiz işlem, token geçersiz.' });
     }
-  }
-
-  if (!token) {
+  } else {
     res.status(401).json({ message: 'Token bulunamadı, giriş yapmalısınız.' });
   }
 };
 
-module.exports = { protect };
+// Admin kontrolü
+const adminOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Bu işlem için admin yetkisi gereklidir.' });
+  }
+};
+
+module.exports = { protect, adminOnly };

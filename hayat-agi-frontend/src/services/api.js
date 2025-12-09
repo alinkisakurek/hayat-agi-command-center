@@ -13,9 +13,13 @@ const api = axios.create({
   withCredentials: true, // Cookie-based session için gerekli
 });
 
-// Request interceptor - Her istekte session cookie otomatik gönderilir
+// Request interceptor - Her istekte token'ı header'a ekle
 api.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -29,8 +33,15 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Unauthorized - session expired veya invalid
-      // Auth context'te logout fonksiyonu çağrılacak
-      window.location.href = '/login';
+      // Sadece login sayfasında değilsek logout yap
+      const currentPath = window.location.pathname;
+      // Bildirilen sorunlar sayfasında 401 hatası geldiğinde direkt logout yapma
+      // Çünkü bu sayfa adminOnly gerektiriyor ve token sorunu olabilir
+      if (!currentPath.includes('/login') && !currentPath.includes('/auth/login') && !currentPath.includes('/sorunlar')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
