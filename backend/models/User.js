@@ -8,6 +8,29 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { type: String, enum: ['admin', 'regional'], default: 'regional' },
     tokenVersion: { type: Number, default: 0 },
+    
+    // İletişim Bilgileri
+    phoneNumber: { type: String, default: '' },
+    emergencyContactName: { type: String, default: '' },
+    emergencyContactPhone: { type: String, default: '' },
+    emergencyContactRelation: { type: String, default: '' },
+    
+    // Sağlık Bilgileri
+    bloodType: { 
+      type: String, 
+      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-', ''], 
+      default: '' 
+    },
+    medicalConditions: { type: String, default: '' },
+    prosthetics: { type: String, default: '' },
+    hasProsthesis: { type: Boolean, default: false },
+    birthDate: { type: Date, default: null },
+    gender: { 
+      type: String, 
+      enum: ['male', 'female', 'prefer_not_to_say', ''], 
+      default: '' 
+    },
+    medications: { type: String, default: '' },
   },
   { timestamps: true }
 );
