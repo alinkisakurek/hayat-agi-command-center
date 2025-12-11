@@ -63,3 +63,30 @@ export const logout = async () => {
   }
 };
 
+/**
+ * Kullanıcı profil bilgilerini günceller
+ * @param {Object} profileData - Güncellenecek profil bilgileri
+ * @returns {Promise<Object>} Güncellenmiş kullanıcı bilgileri
+ */
+export const updateProfile = async (profileData) => {
+  try {
+    const response = await api.put('/api/users/profile', profileData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Profil güncellenirken bir hata oluştu' };
+  }
+};
+
+/**
+ * Kullanıcı profil bilgilerini getirir
+ * @returns {Promise<Object>} Kullanıcı bilgileri
+ */
+export const getProfile = async () => {
+  try {
+    const response = await api.get('/api/users/me');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Profil bilgileri alınırken bir hata oluştu' };
+  }
+};
+

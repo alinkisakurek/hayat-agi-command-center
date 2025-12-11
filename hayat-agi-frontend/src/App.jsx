@@ -22,6 +22,7 @@ import Dashboard from './pages/Dashboard'; // Admin Layout (Sidebar + Header)
 import GatewayManager from './pages/GatewayManager'; // Admin Gateway Listesi (CRUD)
 import AddGateway from './pages/AddGateway'; // Admin Ekleme Formu
 import LiveMap from './pages/LiveMap'; // Canlı Harita Sayfası
+import ReportedIssues from './pages/ReportedIssues'; // Bildirilen Sorunlar
 
 
 // Vatandaş Sayfaları
@@ -99,12 +100,15 @@ function App() {
               <Route path="add-gateway" element={<AddGateway />} />
 
               <Route path="harita" element={<LiveMap />} />
+
+              {/* 4. Bildirilen Sorunlar */}
+              <Route path="sorunlar" element={<ReportedIssues />} />
             </Route>
 
 
             {/* --- 404 / YÖNLENDİRME --- */}
-            {/* Bilinmeyen bir adrese gidilirse Dashboard'a at */}
-            <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+            {/* Bilinmeyen bir adrese gidilirse Landing Page'e at */}
+            <Route path="*" element={<Navigate to={ROUTES.LANDING_PAGE} replace />} />
 
           </Routes>
         </BrowserRouter>

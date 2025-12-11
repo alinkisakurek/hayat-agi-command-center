@@ -1,6 +1,6 @@
-import axios from 'axios';
+import api from '../services/api';
 
-const API_URL = 'http://localhost:5000/api/gateways';
+const API_URL = '/api/gateways';
 
 // Mock data to use when backend is offline - Görseldeki gibi
 const MOCK_DATA = [
@@ -151,7 +151,7 @@ const MOCK_DATA = [
 
 export const getGateways = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await api.get(API_URL);
         return response.data;
     } catch (error) {
         console.warn('Backend offline, using mock data');
@@ -162,12 +162,12 @@ export const getGateways = async () => {
 };
 
 export const createGateway = async (gatewayData) => {
-    const response = await axios.post(API_URL, gatewayData);
+    const response = await api.post(API_URL, gatewayData);
     return response.data;
 };
 
 
 export const deleteGateway = async (id) => {
-    const response = await axios.delete(`${API_URL}/${id}`);
+    const response = await api.delete(`${API_URL}/${id}`);
     return response.data;
 };

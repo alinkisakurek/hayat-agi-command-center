@@ -1,91 +1,321 @@
 import React, { useState } from 'react';
-import { Container, TextField, Button, Typography, Alert, Stack } from '@mui/material';
+import { 
+    Container, 
+    TextField, 
+    Button, 
+    Typography, 
+    Alert, 
+    Stack,
+    Box,
+    CircularProgress,
+    Paper
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { createGateway } from '../api/gatewayService';
+import SearchIcon from '@mui/icons-material/Search';
 
 const AddGateway = () => {
     const navigate = useNavigate();
 
-
     const [formData, setFormData] = useState({
         name: '',
-        latitude: '',
-        longitude: '',
-        status: 'active'
+        serialNumber: '',
+        street: '',
+        buildingNo: '',
+        doorNo: '',
+        district: '',
+        city: '',
+        province: '',
+        postalCode: ''
     });
     const [error, setError] = useState('');
+    const [isGeocoding, setIsGeocoding] = useState(false);
+    const [geocodingError, setGeocodingError] = useState('');
+    const [location, setLocation] = useState(null); // { lat, lng }
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError('');
+        setGeocodingError('');
     };
 
+    // Adres geocoding (adres -> koordinat)
+    const handleGeocodeAddress = async () => {
+        if (!formData.street.trim() || !formData.province.trim()) {
+            setGeocodingError('Lütfen en azından sokak ve il bilgilerini girin.');
+            return;
+        }
+
+        setIsGeocoding(true);
+        setGeocodingError('');
+
+        try {
+            // Adres string'ini oluştur - Türkiye için optimize edilmiş format
+            let addressParts = [];
+            
+            // Sokak ve bina no
+            if (formData.street) {
+                if (formData.buildingNo) {
+                    addressParts.push(`${formData.street} ${formData.buildingNo}`);
+                } else {
+                    addressParts.push(formData.street);
+                }
+            }
+            
+            // İlçe (city)
+            if (formData.city) {
+                addressParts.push(formData.city);
+            }
+            
+            // İl (province)
+            if (formData.province) {
+                addressParts.push(formData.province);
+            }
+            
+            // Türkiye
+            addressParts.push('Türkiye');
+            
+            const addressString = addressParts.join(', ');
+            console.log('Aranan adres:', addressString);
+            
+            // Nominatim API (OpenStreetMap geocoding)
+            // Rate limiting için 1 saniye bekle
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressString)}&limit=5&countrycodes=tr&addressdetails=1`,
+                {
+                    headers: {
+                        'User-Agent': 'HayatAgiApp/1.0',
+                        'Accept-Language': 'tr,en'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Geocoding sonucu:', data);
+
+            if (data && data.length > 0) {
+                // En yüksek önem skoruna sahip sonucu al
+                const result = data[0];
+                const lat = parseFloat(result.lat);
+                const lng = parseFloat(result.lon);
+                setLocation({ lat, lng });
+                setGeocodingError('');
+            } else {
+                setGeocodingError(`Adres bulunamadı: "${addressString}". Lütfen adresi kontrol edin. Örnek: "Atatürk Caddesi, Kadıköy, İstanbul, Türkiye"`);
+            }
+        } catch (error) {
+            console.error('Geocoding hatası:', error);
+            setGeocodingError(`Adres arama sırasında bir hata oluştu: ${error.message}. Lütfen tekrar deneyin.`);
+        } finally {
+            setIsGeocoding(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!formData.name.trim() || !formData.serialNumber.trim()) {
+            setError('Lütfen cihaz adı ve seri numarası alanlarını doldurun.');
+            return;
+        }
 
-        if (!formData.name || !formData.latitude || !formData.longitude) {
-            setError('Lütfen tüm zorunlu alanları doldurun.');
+        if (!location) {
+            setError('Lütfen önce "Konumu Bul" butonuna tıklayarak adresin koordinatlarını alın.');
             return;
         }
 
         try {
             const gatewayData = {
-                name: formData.name,
-                status: formData.status,
+                name: formData.name.trim(),
+                serialNumber: formData.serialNumber.trim(),
+                status: 'active',
                 location: {
-                    lat: parseFloat(formData.latitude),
-                    lng: parseFloat(formData.longitude)
+                    lat: location.lat,
+                    lng: location.lng
+                },
+                address: {
+                    street: formData.street.trim(),
+                    buildingNo: formData.buildingNo.trim(),
+                    district: formData.district.trim(),
+                    city: formData.city.trim(),
+                    postalCode: formData.postalCode.trim()
                 }
             };
             await createGateway(gatewayData);
             navigate('/dashboard/gateways');
         } catch (err) {
-            setError('Kayıt sırasında bir hata oluştu.');
+            console.error('Gateway kaydetme hatası:', err);
+            const errorMessage = err?.response?.data?.message || err?.message || 'Kayıt sırasında bir hata oluştu.';
+            setError(errorMessage);
         }
     };
 
     return (
-        <Container maxWidth="sm" sx={{ py: 4 }}>
-            <Typography variant="h4" gutterBottom>Yeni Gateway Ekle</Typography>
+        <Container maxWidth="md" sx={{ py: 4 }}>
+            <Typography variant="h4" fontWeight="700" sx={{ mb: 3, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
+                Yeni Gateway Ekle
+            </Typography>
 
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
+            {geocodingError && <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>{geocodingError}</Alert>}
 
-            <form onSubmit={handleSubmit}>
-                <Stack spacing={3}>
-                    <TextField
-                        label="Cihaz Adı"
-                        name="name"
-                        fullWidth
-                        required
-                        onChange={handleChange}
-                    />
-                    <Stack direction="row" spacing={2}>
-                        <TextField
-                            label="Enlem (Latitude)"
-                            name="latitude"
-                            type="number"
-                            inputProps={{ step: "any" }}
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+                <form onSubmit={handleSubmit}>
+                    <Stack spacing={3}>
+                        {/* Cihaz Bilgileri */}
+                        <Box>
+                            <Typography variant="h6" fontWeight="700" sx={{ mb: 2, fontSize: '1.125rem' }}>
+                                Cihaz Bilgileri
+                            </Typography>
+                            <Stack spacing={2.5}>
+                                <TextField
+                                    label="Cihaz Adı"
+                                    name="name"
+                                    fullWidth
+                                    required
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    sx={{ borderRadius: 2 }}
+                                />
+                                <TextField
+                                    label="Seri Numarası"
+                                    name="serialNumber"
+                                    fullWidth
+                                    required
+                                    value={formData.serialNumber}
+                                    onChange={handleChange}
+                                    placeholder="Örn: GW-2024-001"
+                                    sx={{ borderRadius: 2 }}
+                                />
+                            </Stack>
+                        </Box>
+
+                        {/* Adres Bilgileri */}
+                        <Box>
+                            <Typography variant="h6" fontWeight="700" sx={{ mb: 2, fontSize: '1.125rem' }}>
+                                Adres Bilgileri
+                            </Typography>
+                            <Stack spacing={2.5}>
+                                <TextField
+                                    label="Sokak/Cadde"
+                                    name="street"
+                                    fullWidth
+                                    required
+                                    value={formData.street}
+                                    onChange={handleChange}
+                                    placeholder="Örn: Atatürk Caddesi veya İstiklal Caddesi"
+                                    sx={{ borderRadius: 2 }}
+                                />
+                                <Stack direction="row" spacing={2}>
+                                    <TextField
+                                        label="Bina No"
+                                        name="buildingNo"
+                                        fullWidth
+                                        value={formData.buildingNo}
+                                        onChange={handleChange}
+                                        placeholder="Örn: 123"
+                                        sx={{ borderRadius: 2 }}
+                                    />
+                                    <TextField
+                                        label="Kapı No"
+                                        name="doorNo"
+                                        fullWidth
+                                        value={formData.doorNo || ''}
+                                        onChange={(e) => setFormData({ ...formData, doorNo: e.target.value })}
+                                        placeholder="Örn: 5 (Opsiyonel)"
+                                        sx={{ borderRadius: 2 }}
+                                    />
+                                </Stack>
+                                <TextField
+                                    label="Mahalle/Semt/Köy"
+                                    name="district"
+                                    fullWidth
+                                    value={formData.district}
+                                    onChange={handleChange}
+                                    placeholder="Örn: Moda, Beşiktaş (Opsiyonel)"
+                                    sx={{ borderRadius: 2 }}
+                                />
+                                <TextField
+                                    label="İlçe"
+                                    name="city"
+                                    fullWidth
+                                    required
+                                    value={formData.city}
+                                    onChange={handleChange}
+                                    placeholder="Örn: Kadıköy, Beşiktaş, Şişli"
+                                    sx={{ borderRadius: 2 }}
+                                />
+                                <TextField
+                                    label="İl"
+                                    name="province"
+                                    fullWidth
+                                    required
+                                    value={formData.province || ''}
+                                    onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+                                    placeholder="Örn: İstanbul, Ankara, İzmir"
+                                    sx={{ borderRadius: 2 }}
+                                />
+                                <TextField
+                                    label="Posta Kodu"
+                                    name="postalCode"
+                                    fullWidth
+                                    value={formData.postalCode}
+                                    onChange={handleChange}
+                                    placeholder="Örn: 34000"
+                                    sx={{ borderRadius: 2 }}
+                                />
+                            </Stack>
+                        </Box>
+
+                        {/* Konum Bul Butonu */}
+                        <Box>
+                            <Button
+                                variant="outlined"
+                                onClick={handleGeocodeAddress}
+                                disabled={isGeocoding || !formData.street.trim() || !formData.province.trim()}
+                                startIcon={isGeocoding ? <CircularProgress size={20} /> : <SearchIcon />}
+                                fullWidth
+                                size="large"
+                                sx={{ 
+                                    py: 1.5,
+                                    borderRadius: 2,
+                                    fontWeight: 600
+                                }}
+                            >
+                                {isGeocoding ? 'Konum Aranıyor...' : 'Konumu Bul'}
+                            </Button>
+                            {location && (
+                                <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
+                                    Konum bulundu: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                                </Alert>
+                            )}
+                        </Box>
+
+                        {/* Kaydet Butonu */}
+                        <Button 
+                            type="submit" 
+                            variant="contained" 
+                            size="large"
                             fullWidth
-                            required
-                            onChange={handleChange}
-                        />
-                        <TextField
-                            label="Boylam (Longitude)"
-                            name="longitude"
-                            type="number"
-                            inputProps={{ step: "any" }}
-                            fullWidth
-                            required
-                            onChange={handleChange}
-                        />
+                            disabled={!location}
+                            sx={{
+                                py: 1.5,
+                                borderRadius: 2,
+                                fontWeight: 700,
+                                fontSize: '1rem'
+                            }}
+                        >
+                            Gateway'i Kaydet
+                        </Button>
                     </Stack>
-
-                    <Button type="submit" variant="contained" size="large">
-                        Kaydet
-                    </Button>
-                </Stack>
-            </form>
+                </form>
+            </Paper>
         </Container>
     );
 };
