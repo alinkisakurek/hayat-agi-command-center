@@ -1,39 +1,66 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { HEALTH_OPTIONS, GENDER_LABELS } = require('../utils/constants');
+
+const Schema = mongoose.Schema;
+
+const emergencyContactUserSchema = new Schema({
+  fullname: { type: String, default: '', required: true, trim: true },
+  phone: { type: String, default: '', required: true, trim: true },
+  relation: { type: String, default: '', trim: true }
+}, { _id: false });
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'regional'], default: 'regional' },
+    name: { type: String, required: true, minlength: 2, trim: true },
+    surname: { type: String, required: true, minlength: 2, trim: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+    password: { type: String, required: true, minlength: 6 },
+    role: { type: String, enum: ['admin', 'citizen'], default: 'citizen' },
+
+    phoneNumber: { type: String, default: null, trim: true },
     tokenVersion: { type: Number, default: 0 },
-    
-    // İletişim Bilgileri
-    phoneNumber: { type: String, default: '' },
-    emergencyContactName: { type: String, default: '' },
-    emergencyContactPhone: { type: String, default: '' },
-    emergencyContactRelation: { type: String, default: '' },
-    
-    // Sağlık Bilgileri
-    bloodType: { 
-      type: String, 
-      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-', ''], 
-      default: '' 
+
+    emergencyContact: {
+      type: emergencyContactUserSchema,
+      default: () => ({})
     },
-    medicalConditions: { type: String, default: '' },
-    prosthetics: { type: String, default: '' },
-    hasProsthesis: { type: Boolean, default: false },
+
     birthDate: { type: Date, default: null },
-    gender: { 
-      type: String, 
-      enum: ['male', 'female', 'prefer_not_to_say', ''], 
-      default: '' 
+
+    bloodType: {
+      type: String,
+      enum: HEALTH_OPTIONS.bloodGroups,
+      default: null,
     },
-    medications: { type: String, default: '' },
+
+    medicalConditions: {
+      type: String,
+      enum: HEALTH_OPTIONS.chronicConditions,
+      default: [],
+    },
+
+    prosthetics: {
+      type: String,
+      enum: HEALTH_OPTIONS.prostheses,
+      default: [],
+    },
+
+    medications: {
+      type: String,
+      enum: HEALTH_OPTIONS.medications,
+      default: [],
+    },
+
+    gender: {
+      type: String,
+      enum: Object.keys(GENDER_LABELS),
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
 
 // Hash password if modified
 userSchema.pre('save', async function (next) {
