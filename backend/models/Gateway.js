@@ -1,7 +1,45 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const { HEALTH_OPTIONS, GENDER_LABELS } = require('../utils/constants');
+
+const addressSchema = new Schema({
+  street: { type: String, default: '' },
+  buildingNo: { type: String, default: '' },
+  district: { type: String, default: '' },
+  city: { type: String, default: '' },
+  postalCode: { type: String, default: '' }
+}, { _id: false })
+
+const registeredUserSchema = new Schema({
+  fullname: { type: String, required: true, trim: true },
+  tcNumber: {
+    type: String,
+    trim: true,
+    sparse: true,
+  },
+
+  gender: { type: String, enum: Object.keys(GENDER_LABELS), default: 'prefer_not_to_say' },
+  birthDate: { type: Date, default: null },
+  bloodType: { type: String, enum: HEALTH_OPTIONS.bloodGroups, default: 'Bilinmiyor' },
+  medicalConditions: { type: [String], enum: HEALTH_OPTIONS.chronicConditions, default: [] },
+  prosthetics: { type: [String], enum: HEALTH_OPTIONS.prostheses, default: [] },
+  medications: { type: [String], enum: HEALTH_OPTIONS.medications, default: [] },
+}, { _id: true });
+
+const registeredAnimalSchema = new Schema({
+  name: { type: String, default: '', trim: true },
+  species: { type: String, default: '', trim: true },
+  breed: { type: String, default: '', trim: true },
+  microchipId: { type: String, trim: true, sparse: true, unique: true }
+})
+
 
 const gatewaySchema = new Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   name: {
     type: String,
     required: true
@@ -26,6 +64,22 @@ const gatewaySchema = new Schema({
     lat: { type: Number, required: true },
     lng: { type: Number, required: true }
   },
+
+  address: {
+    type: addressSchema,
+    default: () => ({})
+  },
+
+  registered_users: {
+    type: [registeredUserSchema],
+    default: []
+  },
+
+  registered_animals: {
+    type: [registeredAnimalSchema],
+    default: []
+  },
+
   connected_devices: {
     type: Number,
     default: 0
@@ -42,4 +96,15 @@ const gatewaySchema = new Schema({
   timestamps: true
 });
 
+// Tüm 'registered_users' dizilerindeki 'tcNumber' alanı benzersiz olsun (Boş değilse)
+gatewaySchema.index(
+  { "registered_users.tcNumber": 1 },
+  { unique: true, sparse: true, background: true }
+);
+
+// Tüm 'registered_animals' dizilerindeki 'microchipId' alanı benzersiz olsun (Boş değilse)
+gatewaySchema.index(
+  { "registered_animals.microchipId": 1 },
+  { unique: true, sparse: true, background: true }
+);
 module.exports = mongoose.model('Gateway', gatewaySchema);

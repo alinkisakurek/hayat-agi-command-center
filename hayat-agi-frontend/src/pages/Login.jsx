@@ -26,7 +26,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
 
-  const { isAuthenticated } = useAuth();
+  const { refreshUser } = useAuth();
   const navigate = useNavigate();
   /*
     // Zaten giriş yapmışsa yönlendir
@@ -65,7 +65,17 @@ const Login = () => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         console.log("Giriş Başarılı:", data.user);
-        navigate(ROUTES.DASHBOARD);
+        
+        // AuthContext'i güncelle
+        refreshUser();
+        
+        // Role'e göre yönlendirme
+        if (data.user.role === 'admin' || data.user.role === 'administrator') {
+          navigate(ROUTES.DASHBOARD);
+        } else {
+          // Vatandaş için panel'e yönlendir
+          navigate('/panel');
+        }
       } else {
         setError(data.error || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
       }

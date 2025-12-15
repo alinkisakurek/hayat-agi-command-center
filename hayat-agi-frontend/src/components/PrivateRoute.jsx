@@ -26,7 +26,7 @@ const PrivateRoute = ({
   // --- KURAL 1: Token yoksa (Giriş yapmamışsa) -> Login'e git ---
   if (!token) {
     // replace: Geri butonuna basınca tekrar buraya gelmesini engeller
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // --- KURAL 2: Rol Kontrolü (Varsa) ---

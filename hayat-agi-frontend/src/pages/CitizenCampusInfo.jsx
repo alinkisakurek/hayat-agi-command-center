@@ -20,8 +20,21 @@ import {
   CardContent,
   Chip,
   Stack,
-  Divider
+  Divider,
+  Avatar,
+  IconButton,
+  Autocomplete
 } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/tr';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PetsIcon from '@mui/icons-material/Pets';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { diseases, medications, prosthetics, getAllMedications } from '../data/healthData';
 
 const BLOOD_GROUPS = [
   'A Rh(+)', 'A Rh(-)',
@@ -40,9 +53,11 @@ const CitizenCampusInfo = () => {
   const [form, setForm] = useState({
     name: '',
     gender: '',
-    birthDate: '',
+    birthDate: null,
     bloodGroup: '',
-    conditions: ''
+    conditions: '',
+    medications: '',
+    prosthetics: ''
   });
   const [petForm, setPetForm] = useState({
     name: '',
@@ -50,17 +65,25 @@ const CitizenCampusInfo = () => {
     breed: ''
   });
   const [touched, setTouched] = useState({});
+  const [selectedDiseases, setSelectedDiseases] = useState([]);
+  const [selectedMedications, setSelectedMedications] = useState([]);
+  const [selectedProsthetics, setSelectedProsthetics] = useState([]);
 
   const handleOpenDialog = () => {
     setEditingPersonId(null);
     setForm({
       name: '',
       gender: '',
-      birthDate: '',
+      birthDate: null,
       bloodGroup: '',
-      conditions: ''
+      conditions: '',
+      medications: '',
+      prosthetics: ''
     });
     setTouched({});
+    setSelectedDiseases([]);
+    setSelectedMedications([]);
+    setSelectedProsthetics([]);
     setIsDialogOpen(true);
   };
 
@@ -70,11 +93,16 @@ const CitizenCampusInfo = () => {
     setForm({
       name: '',
       gender: '',
-      birthDate: '',
+      birthDate: null,
       bloodGroup: '',
-      conditions: ''
+      conditions: '',
+      medications: '',
+      prosthetics: ''
     });
     setTouched({});
+    setSelectedDiseases([]);
+    setSelectedMedications([]);
+    setSelectedProsthetics([]);
   };
 
   const handleOpenPetDialog = () => {
@@ -104,23 +132,29 @@ const CitizenCampusInfo = () => {
     }));
   };
 
+  const handleDateChange = (newValue) => {
+    setForm((prev) => ({
+      ...prev,
+      birthDate: newValue
+    }));
+  };
+
   const handleBlur = (field) => () => {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const isRequiredError = (field) =>
-    touched[field] && !form[field];
+  const isRequiredError = (field) => {
+    if (field === 'birthDate') {
+      return touched[field] && !form[field];
+    }
+    return touched[field] && !form[field];
+  };
 
   const isFormValid =
     form.name &&
     form.gender &&
     form.birthDate &&
     form.bloodGroup;
-
-  const isPetFormValid =
-    petForm.name &&
-    petForm.animalType &&
-    petForm.breed;
 
   const handleSavePerson = () => {
     if (!isFormValid) {
@@ -133,11 +167,31 @@ const CitizenCampusInfo = () => {
       return;
     }
 
+    const conditionsString = selectedDiseases.length
+      ? selectedDiseases.map((d) => d.name).join(', ')
+      : form.conditions || '';
+
+    const medicationsString = selectedMedications.length
+      ? selectedMedications.map((m) => m.name).join(', ')
+      : form.medications || '';
+
+    const prostheticsString = selectedProsthetics.length
+      ? selectedProsthetics.map((p) => p.name).join(', ')
+      : form.prosthetics || '';
+
+    const personData = {
+      ...form,
+      conditions: conditionsString,
+      medications: medicationsString,
+      prosthetics: prostheticsString,
+      birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : ''
+    };
+
     if (editingPersonId) {
       setPeople((prev) =>
         prev.map((p) =>
           p.id === editingPersonId
-            ? { ...p, ...form }
+            ? { ...p, ...personData }
             : p
         )
       );
@@ -146,13 +200,18 @@ const CitizenCampusInfo = () => {
         ...prev,
         {
           id: Date.now(),
-          ...form
+          ...personData
         }
       ]);
     }
 
     handleCloseDialog();
   };
+
+  const isPetFormValid =
+    petForm.name &&
+    petForm.animalType &&
+    petForm.breed;
 
   const handleChangePet = (field) => (event) => {
     setPetForm((prev) => ({
@@ -188,11 +247,16 @@ const CitizenCampusInfo = () => {
   };
 
   return (
-    <Box>
-      {/* Yerleşke Bilgileri Üst Bölüm */}
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
-        Yerleşke Bilgileri
-      </Typography>
+    <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
+      {/* Başlık Bölümü */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h3" fontWeight="800" sx={{ mb: 1.5, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
+          Yerleşke Bilgileri
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', md: '1.05rem' }, fontWeight: 400, lineHeight: 1.6 }}>
+          Yerleşkenizdeki kişiler ve evcil hayvanlar hakkında bilgiler
+        </Typography>
+      </Box>
 
       <Paper
         elevation={0}
@@ -200,14 +264,15 @@ const CitizenCampusInfo = () => {
           p: 3,
           mb: 4,
           borderRadius: 3,
-          border: '1px solid rgba(0,0,0,0.06)',
+          border: '1px solid rgba(0,0,0,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
           background: 'linear-gradient(135deg, #f5f9ff 0%, #ffffff 100%)'
         }}
       >
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+        <Typography variant="h5" fontWeight="700" sx={{ mb: 1.5, fontSize: { xs: '1.125rem', md: '1.375rem' } }}>
           Yerleşke Özeti
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
           Yerleşkeniz ile ilgili temel bilgiler bu alanda görüntülenecektir. Adres,
           kat sayısı, toplam daire/oda bilgisi gibi veriler burada özetlenebilir.
           (Bu alan şu anda örnek amaçlı yer tutucu metin içermektedir.)
@@ -215,74 +280,199 @@ const CitizenCampusInfo = () => {
       </Paper>
 
       {/* Kişiler Bölümü */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" fontWeight="bold">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h5" fontWeight="700" sx={{ fontSize: { xs: '1.375rem', md: '1.625rem' } }}>
           Kişiler
         </Typography>
-        <Button variant="contained" onClick={handleOpenDialog}>
-          Kişi Ekle
-        </Button>
+        {people.length > 0 && (
+          <Button 
+            variant="contained" 
+            size="large"
+            startIcon={<PersonAddIcon />}
+            onClick={handleOpenDialog}
+            sx={{
+              px: 3.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              borderRadius: 3
+            }}
+          >
+            Kişi Ekle
+          </Button>
+        )}
       </Box>
 
       {people.length === 0 ? (
         <Paper
           elevation={0}
           sx={{
-            p: 3,
+            p: 5,
             borderRadius: 3,
-            border: '1px dashed rgba(0,0,0,0.15)',
+            border: '2px dashed rgba(0,0,0,0.15)',
             textAlign: 'center',
-            color: 'text.secondary'
+            color: 'text.secondary',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
           }}
         >
-          <Typography variant="body2" sx={{ mb: 1 }}>
+          <PersonAddIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1.5, opacity: 0.5 }} />
+          <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
             Henüz kayıtlı bir kişi bulunmuyor.
           </Typography>
-          <Button variant="outlined" onClick={handleOpenDialog}>
-            Kişi Ekle
+          <Button 
+            variant="contained" 
+            size="large"
+            startIcon={<PersonAddIcon />}
+            onClick={handleOpenDialog}
+            sx={{
+              px: 3.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              borderRadius: 3
+            }}
+          >
+            İlk Kişiyi Ekle
           </Button>
         </Paper>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={2.5}>
           {people.map((person) => (
             <Grid item xs={12} md={6} key={person.id}>
-              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {person.name}
-                    </Typography>
-                    <Button
-                      size="small"
-                      variant="text"
+              <Card 
+                elevation={0} 
+                sx={{ 
+                  borderRadius: 4, 
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  transition: 'all 0.3s ease-in-out',
+                  '&:hover': {
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                    transform: 'translateY(-4px)'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.light' }}>
+                        <Typography variant="h6" fontWeight="800" color="primary.main" sx={{ fontSize: '1.125rem' }}>
+                          {person.name.charAt(0).toUpperCase()}
+                        </Typography>
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h5" fontWeight="800" sx={{ mb: 0.5, fontSize: { xs: '1.125rem', md: '1.375rem' } }}>
+                          {person.name}
+                        </Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 0.75 }}>
+                          <Chip 
+                            label={person.gender === 'male' ? 'Erkek' : 'Kadın'} 
+                            size="small"
+                            sx={{ fontSize: '0.8rem', fontWeight: 600, height: 26 }}
+                          />
+                          <Chip 
+                            label={person.bloodGroup} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined"
+                            sx={{ fontSize: '0.8rem', fontWeight: 600, height: 26 }}
+                          />
+                        </Stack>
+                      </Box>
+                    </Stack>
+                    <IconButton
                       onClick={() => {
                         setEditingPersonId(person.id);
                         setForm({
                           name: person.name,
                           gender: person.gender,
-                          birthDate: person.birthDate,
+                          birthDate: person.birthDate ? dayjs(person.birthDate) : null,
                           bloodGroup: person.bloodGroup,
-                          conditions: person.conditions || ''
+                          conditions: person.conditions || '',
+                          medications: person.medications || '',
+                          prosthetics: person.prosthetics || ''
                         });
+
+                        // Mevcut rahatsızlıkları healthData listesindeki objelere eşleştir
+                        const conditionsArray = person.conditions
+                          ? person.conditions.split(',').map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        const matchedDiseases = conditionsArray.map((name) =>
+                          diseases.find((d) => d.name === name) || { id: name, name, category: 'Diğer' }
+                        );
+                        setSelectedDiseases(matchedDiseases);
+
+                        // Mevcut ilaçları healthData listesindeki objelere eşleştir
+                        const medicationsArray = person.medications
+                          ? person.medications.split(',').map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        const allMeds = getAllMedications();
+                        const matchedMeds = medicationsArray.map((name) =>
+                          allMeds.find((m) => m.name === name) || { id: name, name, category: 'Diğer' }
+                        );
+                        setSelectedMedications(matchedMeds);
+
+                        // Mevcut protezleri healthData listesindeki objelere eşleştir
+                        const prostheticsArray = person.prosthetics
+                          ? person.prosthetics.split(',').map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        const matchedProsthetics = prostheticsArray.map((name) =>
+                          prosthetics.find((p) => p.name === name) || { id: name, name, category: 'Diğer' }
+                        );
+                        setSelectedProsthetics(matchedProsthetics);
+
                         setTouched({});
                         setIsDialogOpen(true);
                       }}
+                      sx={{
+                        bgcolor: 'action.hover',
+                        '&:hover': { bgcolor: 'action.selected' }
+                      }}
                     >
-                      Düzenle
-                    </Button>
+                      <EditIcon />
+                    </IconButton>
                   </Box>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1.5 }}>
-                    <Chip label={person.gender === 'male' ? 'Erkek' : 'Kadın'} size="small" />
-                    <Chip label={person.bloodGroup} size="small" color="primary" variant="outlined" />
+                  <Divider sx={{ mb: 2.5, borderWidth: 1 }} />
+                  <Stack spacing={1.5}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                        Doğum Tarihi
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                        {person.birthDate}
+                      </Typography>
+                    </Box>
+                    {person.conditions && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Rahatsızlıklar
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
+                          {person.conditions}
+                        </Typography>
+                      </Box>
+                    )}
+                    {person.medications && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Kullandığı İlaçlar
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
+                          {person.medications}
+                        </Typography>
+                      </Box>
+                    )}
+                    {person.prosthetics && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Protez / Cihazlar
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
+                          {person.prosthetics}
+                        </Typography>
+                      </Box>
+                    )}
                   </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                    Doğum Tarihi: {person.birthDate}
-                  </Typography>
-                  {person.conditions && (
-                    <Typography variant="body2" color="text.secondary">
-                      Rahatsızlıklar: {person.conditions}
-                    </Typography>
-                  )}
                 </CardContent>
               </Card>
             </Grid>
@@ -291,48 +481,93 @@ const CitizenCampusInfo = () => {
       )}
 
       {/* Evcil Hayvanlar Bölümü */}
-      <Box sx={{ mt: 4 }}>
-        <Divider sx={{ mb: 2 }} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" fontWeight="bold">
+      <Box sx={{ mt: 5 }}>
+        <Divider sx={{ mb: 3, borderWidth: 1 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          <Typography variant="h5" fontWeight="700" sx={{ fontSize: { xs: '1.375rem', md: '1.625rem' } }}>
             Evcil Hayvanlar
           </Typography>
-          <Button variant="outlined" onClick={handleOpenPetDialog}>
-            Evcil Hayvan Ekle
-          </Button>
+          {pets.length > 0 && (
+            <Button 
+              variant="outlined" 
+              size="large"
+              startIcon={<PetsIcon />}
+              onClick={handleOpenPetDialog}
+              sx={{
+                px: 3.5,
+                py: 1.25,
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                borderRadius: 3
+              }}
+            >
+              Evcil Hayvan Ekle
+            </Button>
+          )}
         </Box>
 
         {pets.length === 0 ? (
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: 5,
               borderRadius: 3,
-              border: '1px dashed rgba(0,0,0,0.15)',
+              border: '2px dashed rgba(0,0,0,0.15)',
               textAlign: 'center',
-              color: 'text.secondary'
+              color: 'text.secondary',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
             }}
           >
-            <Typography variant="body2" sx={{ mb: 1 }}>
+            <PetsIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1.5, opacity: 0.5 }} />
+            <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
               Henüz kayıtlı bir evcil hayvan bulunmuyor.
             </Typography>
-            <Button variant="outlined" onClick={handleOpenPetDialog}>
-              Evcil Hayvan Ekle
+            <Button 
+              variant="outlined" 
+              size="large"
+              startIcon={<PetsIcon />}
+              onClick={handleOpenPetDialog}
+              sx={{
+                px: 3.5,
+                py: 1.25,
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                borderRadius: 3
+              }}
+            >
+              İlk Evcil Hayvanı Ekle
             </Button>
           </Paper>
         ) : (
-          <Grid container spacing={2}>
+          <Grid container spacing={2.5}>
             {pets.map((pet) => (
               <Grid item xs={12} md={6} key={pet.id}>
-                <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="subtitle1" fontWeight="bold">
-                        {pet.name}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="text"
+                <Card 
+                  elevation={0} 
+                  sx={{ 
+                    borderRadius: 4, 
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      transform: 'translateY(-4px)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        <Avatar sx={{ width: 48, height: 48, bgcolor: 'secondary.light' }}>
+                          <PetsIcon sx={{ color: 'secondary.main', fontSize: 24 }} />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="h5" fontWeight="800" sx={{ mb: 0.5, fontSize: { xs: '1.125rem', md: '1.375rem' } }}>
+                            {pet.name}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <IconButton
                         onClick={() => {
                           setEditingPetId(pet.id);
                           setPetForm({
@@ -342,16 +577,33 @@ const CitizenCampusInfo = () => {
                           });
                           setIsPetDialogOpen(true);
                         }}
+                        sx={{
+                          bgcolor: 'action.hover',
+                          '&:hover': { bgcolor: 'action.selected' }
+                        }}
                       >
-                        Düzenle
-                      </Button>
+                        <EditIcon />
+                      </IconButton>
                     </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                      Hayvan Türü: {pet.animalType}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Cinsi: {pet.breed}
-                    </Typography>
+                    <Divider sx={{ mb: 2.5, borderWidth: 1 }} />
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Hayvan Türü
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                          {pet.animalType}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Cinsi
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                          {pet.breed}
+                        </Typography>
+                      </Box>
+                    </Stack>
                   </CardContent>
                 </Card>
               </Grid>
@@ -366,11 +618,18 @@ const CitizenCampusInfo = () => {
         onClose={handleCloseDialog}
         fullWidth
         maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 4
+          }
+        }}
       >
-        <DialogTitle>{editingPersonId ? 'Kişiyi Düzenle' : 'Kişi Ekle'}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ mt: 1, maxWidth: 600 }}>
-            <Stack spacing={2}>
+        <DialogTitle sx={{ fontSize: '1.375rem', fontWeight: 700, pb: 1.5 }}>
+          {editingPersonId ? 'Kişiyi Düzenle' : 'Kişi Ekle'}
+        </DialogTitle>
+        <DialogContent dividers sx={{ pt: 2.5 }}>
+          <Box sx={{ maxWidth: 700 }}>
+            <Stack spacing={2.5}>
               <TextField
                 fullWidth
                 label="İsim"
@@ -379,37 +638,59 @@ const CitizenCampusInfo = () => {
                 onBlur={handleBlur('name')}
                 error={isRequiredError('name')}
                 helperText={isRequiredError('name') ? 'İsim zorunlu bir alandır.' : ''}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: '1rem'
+                  }
+                }}
               />
 
               <FormControl component="fieldset" error={isRequiredError('gender')} fullWidth>
-                <FormLabel component="legend">Cinsiyet</FormLabel>
+                <FormLabel component="legend" sx={{ fontSize: '1rem', fontWeight: 600, mb: 1.5 }}>
+                  Cinsiyet
+                </FormLabel>
                 <RadioGroup
                   row
                   value={form.gender}
                   onChange={handleChange('gender')}
                   onBlur={handleBlur('gender')}
                 >
-                  <FormControlLabel value="male" control={<Radio />} label="Erkek" />
-                  <FormControlLabel value="female" control={<Radio />} label="Kadın" />
+                  <FormControlLabel 
+                    value="female" 
+                    control={<Radio />} 
+                    label={<Typography sx={{ fontSize: '1rem' }}>Kadın</Typography>} 
+                  />
+                  <FormControlLabel 
+                    value="male" 
+                    control={<Radio />} 
+                    label={<Typography sx={{ fontSize: '1rem' }}>Erkek</Typography>} 
+                  />
                 </RadioGroup>
                 {isRequiredError('gender') && (
-                  <Typography variant="caption" color="error">
+                  <Typography variant="body2" color="error" sx={{ mt: 1, fontSize: '0.875rem' }}>
                     Cinsiyet zorunlu bir alandır.
                   </Typography>
                 )}
               </FormControl>
 
-              <TextField
-                fullWidth
-                label="Doğum Tarihi"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={form.birthDate}
-                onChange={handleChange('birthDate')}
-                onBlur={handleBlur('birthDate')}
-                error={isRequiredError('birthDate')}
-                helperText={isRequiredError('birthDate') ? 'Doğum tarihi zorunlu bir alandır.' : ''}
-              />
+              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
+                <DatePicker
+                  label="Doğum Tarihi"
+                  value={form.birthDate}
+                  onChange={handleDateChange}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      variant: 'outlined',
+                      error: isRequiredError('birthDate'),
+                      helperText: isRequiredError('birthDate') ? 'Doğum tarihi zorunlu bir alandır.' : '',
+                      onBlur: handleBlur('birthDate')
+                    }
+                  }}
+                  maxDate={dayjs()}
+                  format="DD/MM/YYYY"
+                />
+              </LocalizationProvider>
 
               <TextField
                 select
@@ -428,26 +709,212 @@ const CitizenCampusInfo = () => {
                 ))}
               </TextField>
 
-              <TextField
-                fullWidth
-                label="Rahatsızlıklar"
-                multiline
-                minRows={3}
-                value={form.conditions}
-                onChange={handleChange('conditions')}
-                placeholder="Kronik hastalıklar, alerjiler vb. bilgileri giriniz."
+              {/* Rahatsızlıklar - healthData tabanlı dropdown */}
+              <Autocomplete
+                multiple
+                options={diseases}
+                getOptionLabel={(option) => option.name}
+                value={selectedDiseases}
+                onChange={(_, newValue) => {
+                  setSelectedDiseases(newValue);
+                  setForm((prev) => ({
+                    ...prev,
+                    conditions: newValue.map((d) => d.name).join(', ')
+                  }));
+                }}
+                filterSelectedOptions
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Rahatsızlıklar"
+                    placeholder="Rahatsızlık arayın veya seçin"
+                    helperText="Kronik hastalıklar, alerjiler vb. sağlık durumlarınızı seçin"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                    />
+                  ))
+                }
+                groupBy={(option) => option.category}
+                renderGroup={(params) => (
+                  <li key={params.key}>
+                    <Box
+                      component="div"
+                      sx={{
+                        position: 'sticky',
+                        top: '-8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0, 76, 180, 0.08)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                        zIndex: 1
+                      }}
+                    >
+                      {params.group}
+                    </Box>
+                    <Box component="ul" sx={{ padding: 0 }}>
+                      {params.children}
+                    </Box>
+                  </li>
+                )}
+                sx={{ width: '100%' }}
+              />
+
+              {/* Kullandığı İlaçlar - healthData tabanlı dropdown */}
+              <Autocomplete
+                multiple
+                options={getAllMedications()}
+                getOptionLabel={(option) => option.name}
+                value={selectedMedications}
+                onChange={(_, newValue) => {
+                  setSelectedMedications(newValue);
+                  setForm((prev) => ({
+                    ...prev,
+                    medications: newValue.map((m) => m.name).join(', ')
+                  }));
+                }}
+                filterSelectedOptions
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kullandığı İlaçlar"
+                    placeholder="İlaç arayın veya seçin"
+                    helperText="Düzenli olarak kullandığı ilaçları belirtin"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                    />
+                  ))
+                }
+                groupBy={(option) => option.category}
+                renderGroup={(params) => (
+                  <li key={params.key}>
+                    <Box
+                      component="div"
+                      sx={{
+                        position: 'sticky',
+                        top: '-8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0, 76, 180, 0.08)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                        zIndex: 1
+                      }}
+                    >
+                      {params.group}
+                    </Box>
+                    <Box component="ul" sx={{ padding: 0 }}>
+                      {params.children}
+                    </Box>
+                  </li>
+                )}
+                sx={{ width: '100%' }}
+              />
+
+              {/* Protez / Tıbbi Cihazlar - healthData tabanlı dropdown */}
+              <Autocomplete
+                multiple
+                options={prosthetics}
+                getOptionLabel={(option) => option.name}
+                value={selectedProsthetics}
+                onChange={(_, newValue) => {
+                  setSelectedProsthetics(newValue);
+                  setForm((prev) => ({
+                    ...prev,
+                    prosthetics: newValue.map((p) => p.name).join(', ')
+                  }));
+                }}
+                filterSelectedOptions
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kullandığı Protez / Cihazlar"
+                    placeholder="Protez veya cihaz arayın veya seçin"
+                    helperText="Kullandığı protez veya tıbbi cihazları belirtin"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                    />
+                  ))
+                }
+                groupBy={(option) => option.category}
+                renderGroup={(params) => (
+                  <li key={params.key}>
+                    <Box
+                      component="div"
+                      sx={{
+                        position: 'sticky',
+                        top: '-8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0, 76, 180, 0.08)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                        zIndex: 1
+                      }}
+                    >
+                      {params.group}
+                    </Box>
+                    <Box component="ul" sx={{ padding: 0 }}>
+                      {params.children}
+                    </Box>
+                  </li>
+                )}
+                sx={{ width: '100%' }}
               />
             </Stack>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={handleCloseDialog} color="inherit">
+          <Button 
+            onClick={handleCloseDialog} 
+            color="inherit"
+            size="large"
+            sx={{
+              px: 2.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              borderRadius: 2
+            }}
+          >
             İptal
           </Button>
           <Button
             variant="contained"
             onClick={handleSavePerson}
-            sx={{ ml: 1 }}
+            size="large"
+            sx={{ 
+              ml: 1,
+              px: 3.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              borderRadius: 2
+            }}
           >
             Kişiyi Kaydet
           </Button>
@@ -460,11 +927,18 @@ const CitizenCampusInfo = () => {
         onClose={handleClosePetDialog}
         fullWidth
         maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 4
+          }
+        }}
       >
-        <DialogTitle>{editingPetId ? 'Evcil Hayvanı Düzenle' : 'Evcil Hayvan Ekle'}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ mt: 1 }}>
-            <Grid container spacing={2}>
+        <DialogTitle sx={{ fontSize: '1.375rem', fontWeight: 700, pb: 1.5 }}>
+          {editingPetId ? 'Evcil Hayvanı Düzenle' : 'Evcil Hayvan Ekle'}
+        </DialogTitle>
+        <DialogContent dividers sx={{ pt: 2.5 }}>
+          <Box>
+            <Grid container spacing={2.5}>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -495,13 +969,32 @@ const CitizenCampusInfo = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={handleClosePetDialog} color="inherit">
+          <Button 
+            onClick={handleClosePetDialog} 
+            color="inherit"
+            size="large"
+            sx={{
+              px: 2.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              borderRadius: 2
+            }}
+          >
             İptal
           </Button>
           <Button
             variant="contained"
             onClick={handleSavePet}
-            sx={{ ml: 1 }}
+            size="large"
+            sx={{ 
+              ml: 1,
+              px: 3.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              borderRadius: 2
+            }}
           >
             Kaydet
           </Button>

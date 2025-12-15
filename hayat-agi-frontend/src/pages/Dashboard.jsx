@@ -17,7 +17,10 @@ import {
   MenuItem,
   Tooltip,
   Paper,
-  Badge
+  Badge,
+  Chip,
+  Divider,
+  Button
 } from '@mui/material';
 import { alpha } from '@mui/material/styles'; // Renk opaklığı için
 
@@ -30,12 +33,15 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SecurityIcon from '@mui/icons-material/Security';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 const drawerWidth = 280;
 const menuItems = [
   { text: 'Genel Bakış', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Canlı Harita', icon: <MapIcon />, path: '/dashboard/harita' },
-  { text: 'Gateway Listesi', icon: <RouterIcon />, path: '/dashboard/gateways' }
+  { text: 'Gateway Listesi', icon: <RouterIcon />, path: '/dashboard/gateways' },
+  { text: 'Bildirilen Sorunlar', icon: <BugReportIcon />, path: '/dashboard/sorunlar' }
 ];
 
 const Dashboard = () => {
@@ -43,8 +49,19 @@ const Dashboard = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorElUser, setAnchorElUser] = useState(null);
+  const [anchorElNotifications, setAnchorElNotifications] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{"name": "Kullanıcı", "role": "Personel"}');
+
+  // Örnek bildirimler (gerçek uygulamada API'den gelecek)
+  const notifications = [
+    { id: 1, title: 'Yeni Sorun Bildirimi', message: 'Kullanıcı yeni bir sorun bildirdi', time: '10 dakika önce', read: false, type: 'issue' },
+    { id: 2, title: 'Gateway Durumu', message: 'Gateway cihazı düşük pil uyarısı verdi', time: '1 saat önce', read: false, type: 'device' },
+    { id: 3, title: 'Sistem Güncellemesi', message: 'Sistem başarıyla güncellendi', time: '3 saat önce', read: true, type: 'system' },
+    { id: 4, title: 'Yeni Kullanıcı', message: 'Yeni bir kullanıcı kayıt oldu', time: '5 saat önce', read: true, type: 'user' }
+  ];
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -56,6 +73,23 @@ const Dashboard = () => {
 
   const handleCloseUserMenu = () => {
     setAnchorElUser(null);
+  };
+
+  const handleOpenNotifications = (event) => {
+    setAnchorElNotifications(event.currentTarget);
+  };
+
+  const handleCloseNotifications = () => {
+    setAnchorElNotifications(null);
+  };
+
+  const handleNotificationClick = (notification) => {
+    handleCloseNotifications();
+    if (notification.type === 'issue') {
+      navigate('/dashboard/sorunlar');
+    } else if (notification.type === 'device') {
+      navigate('/dashboard/gateways');
+    }
   };
 
   const handleLogout = () => {
@@ -218,11 +252,117 @@ const Dashboard = () => {
 
           {/* Sağ İkonlar */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <IconButton sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
-              <Badge badgeContent={3} color="error">
-                <NotificationsIcon color="action" />
-              </Badge>
-            </IconButton>
+            <Tooltip title="Bildirimler">
+              <IconButton 
+                sx={{ bgcolor: 'background.paper', boxShadow: 1 }}
+                onClick={handleOpenNotifications}
+              >
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsIcon color="action" />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+
+            {/* Bildirimler Menüsü */}
+            <Menu
+              sx={{ mt: '45px' }}
+              anchorEl={anchorElNotifications}
+              open={Boolean(anchorElNotifications)}
+              onClose={handleCloseNotifications}
+              PaperProps={{
+                sx: {
+                  width: 380,
+                  maxHeight: 500,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  borderRadius: 2,
+                  mt: 1.5
+                }
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'top' }}
+            >
+              <Box sx={{ p: 2, pb: 1 }}>
+                <Typography variant="h6" fontWeight="700" sx={{ mb: 1.5, fontSize: '1rem' }}>
+                  Bildirimler
+                </Typography>
+                {notifications.length === 0 ? (
+                  <Box sx={{ py: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Henüz bildirim bulunmuyor
+                    </Typography>
+                  </Box>
+                ) : (
+                  notifications.map((notification) => (
+                    <MenuItem
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
+                      sx={{
+                        py: 1.5,
+                        px: 1.5,
+                        mb: 0.5,
+                        borderRadius: 2,
+                        bgcolor: notification.read ? 'transparent' : alpha('#004CB4', 0.05),
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Typography 
+                            variant="subtitle2" 
+                            fontWeight={notification.read ? 400 : 700}
+                            sx={{ fontSize: '0.875rem' }}
+                          >
+                            {notification.title}
+                          </Typography>
+                          {!notification.read && (
+                            <Chip 
+                              label="Yeni" 
+                              size="small" 
+                              color="primary"
+                              sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
+                            />
+                          )}
+                        </Box>
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ 
+                            fontSize: '0.8rem',
+                            mb: 0.5,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {notification.message}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <AccessTimeIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                            {notification.time}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </MenuItem>
+                  ))
+                )}
+              </Box>
+              <Divider />
+              <Box sx={{ p: 1.5, textAlign: 'center' }}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    handleCloseNotifications();
+                    navigate('/dashboard/sorunlar');
+                  }}
+                  sx={{ fontSize: '0.8rem' }}
+                >
+                  Tümünü Gör
+                </Button>
+              </Box>
+            </Menu>
 
             <Tooltip title="Profil">
               <IconButton
