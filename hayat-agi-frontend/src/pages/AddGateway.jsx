@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Container, 
     TextField, 
@@ -8,11 +8,34 @@ import {
     Stack,
     Box,
     CircularProgress,
-    Paper
+    Paper,
+    Tabs,
+    Tab
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { createGateway } from '../api/gatewayService';
 import SearchIcon from '@mui/icons-material/Search';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+
+// Leaflet default icon fix
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+});
+
+const LocationPicker = ({ position, onPositionChange }) => {
+  useMapEvents({
+    click(e) {
+      onPositionChange({ lat: e.latlng.lat, lng: e.latlng.lng });
+    }
+  });
+  return position ? <Marker position={[position.lat, position.lng]} /> : null;
+};
 
 const AddGateway = () => {
     const navigate = useNavigate();
@@ -32,11 +55,19 @@ const AddGateway = () => {
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [geocodingError, setGeocodingError] = useState('');
     const [location, setLocation] = useState(null); // { lat, lng }
+    const [locationMethod, setLocationMethod] = useState(0); // 0: Haritadan seç, 1: Adres gir
+    const [resolvedAddress, setResolvedAddress] = useState('');
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setError('');
         setGeocodingError('');
+        setResolvedAddress('');
     };
 
     // Adres geocoding (adres -> koordinat)
@@ -105,6 +136,7 @@ const AddGateway = () => {
                 const lat = parseFloat(result.lat);
                 const lng = parseFloat(result.lon);
                 setLocation({ lat, lng });
+                setResolvedAddress(result.display_name || addressString);
                 setGeocodingError('');
             } else {
                 setGeocodingError(`Adres bulunamadı: "${addressString}". Lütfen adresi kontrol edin. Örnek: "Atatürk Caddesi, Kadıköy, İstanbul, Türkiye"`);
@@ -114,6 +146,38 @@ const AddGateway = () => {
             setGeocodingError(`Adres arama sırasında bir hata oluştu: ${error.message}. Lütfen tekrar deneyin.`);
         } finally {
             setIsGeocoding(false);
+        }
+    };
+
+    const handleReverseGeocode = async (lat, lng) => {
+        setGeocodingError('');
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=tr&addressdetails=1`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'HayatAgiApp/1.0',
+                    'Accept-Language': 'tr,en'
+                }
+            });
+            const data = await response.json();
+            if (data && data.address) {
+                const addr = data.address;
+                setFormData((prev) => ({
+                    ...prev,
+                    street: addr.road || addr.pedestrian || prev.street,
+                    buildingNo: addr.house_number || prev.buildingNo,
+                    district: addr.suburb || addr.neighbourhood || addr.village || prev.district,
+                    city: addr.town || addr.city_district || addr.city || addr.county || prev.city,
+                    province: addr.state || prev.province,
+                    postalCode: addr.postcode || prev.postalCode
+                }));
+                setResolvedAddress(data.display_name || '');
+            } else {
+                setResolvedAddress('');
+            }
+        } catch (error) {
+            console.error('Reverse geocoding hatası:', error);
+            setGeocodingError('Seçilen konumun adresi alınırken bir hata oluştu.');
         }
     };
 
@@ -142,8 +206,10 @@ const AddGateway = () => {
                 address: {
                     street: formData.street.trim(),
                     buildingNo: formData.buildingNo.trim(),
+                    doorNo: formData.doorNo.trim(),
                     district: formData.district.trim(),
                     city: formData.city.trim(),
+                    province: formData.province.trim(),
                     postalCode: formData.postalCode.trim()
                 }
             };
@@ -196,11 +262,78 @@ const AddGateway = () => {
                             </Stack>
                         </Box>
 
-                        {/* Adres Bilgileri */}
+                        {/* Konum / Adres Bilgileri */}
                         <Box>
-                            <Typography variant="h6" fontWeight="700" sx={{ mb: 2, fontSize: '1.125rem' }}>
-                                Adres Bilgileri
-                            </Typography>
+                            <Tabs
+                                value={locationMethod}
+                                onChange={(_, value) => {
+                                    setLocationMethod(value);
+                                    setGeocodingError('');
+                                }}
+                                sx={{ mb: 2 }}
+                            >
+                                <Tab label="Haritadan Seç" />
+                                <Tab label="Adres Gir" />
+                            </Tabs>
+
+                            {locationMethod === 0 && (
+                                <Stack spacing={2.5}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Harita üzerinde bir noktaya tıklayarak gateway cihazının konumunu belirleyin.
+                                    </Typography>
+                                    {isMounted && (
+                                        <Box
+                                            sx={{
+                                                borderRadius: 2,
+                                                border: '1px solid rgba(0,0,0,0.12)',
+                                                overflow: 'hidden',
+                                                height: 360
+                                            }}
+                                        >
+                                            <MapContainer
+                                                center={[41.0082, 28.9784]}
+                                                zoom={12}
+                                                style={{ height: '100%', width: '100%' }}
+                                                scrollWheelZoom
+                                            >
+                                                <TileLayer
+                                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                />
+                                                <LocationPicker
+                                                    position={location}
+                                                    onPositionChange={(pos) => {
+                                                        setLocation(pos);
+                                                        handleReverseGeocode(pos.lat, pos.lng);
+                                                    }}
+                                                />
+                                            </MapContainer>
+                                        </Box>
+                                    )}
+                                    {location && (
+                                        <Alert severity="success" sx={{ borderRadius: 2 }}>
+                                            Seçilen konum: Lat {location.lat.toFixed(6)}, Lng{' '}
+                                            {location.lng.toFixed(6)}
+                                        </Alert>
+                                    )}
+                                    {resolvedAddress && (
+                                        <Alert
+                                            severity="info"
+                                            icon={<LocationOnIcon />}
+                                            sx={{ borderRadius: 2 }}
+                                        >
+                                            Seçilen adres: {resolvedAddress}
+                                        </Alert>
+                                    )}
+                                    {geocodingError && (
+                                        <Alert severity="error" sx={{ borderRadius: 2 }}>
+                                            {geocodingError}
+                                        </Alert>
+                                    )}
+                                </Stack>
+                            )}
+
+                            {locationMethod === 1 && (
                             <Stack spacing={2.5}>
                                 <TextField
                                     label="Sokak/Cadde"
@@ -271,31 +404,43 @@ const AddGateway = () => {
                                     sx={{ borderRadius: 2 }}
                                 />
                             </Stack>
-                        </Box>
-
-                        {/* Konum Bul Butonu */}
-                        <Box>
-                            <Button
-                                variant="outlined"
-                                onClick={handleGeocodeAddress}
-                                disabled={isGeocoding || !formData.street.trim() || !formData.province.trim()}
-                                startIcon={isGeocoding ? <CircularProgress size={20} /> : <SearchIcon />}
-                                fullWidth
-                                size="large"
-                                sx={{ 
-                                    py: 1.5,
-                                    borderRadius: 2,
-                                    fontWeight: 600
-                                }}
-                            >
-                                {isGeocoding ? 'Konum Aranıyor...' : 'Konumu Bul'}
-                            </Button>
-                            {location && (
-                                <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
-                                    Konum bulundu: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                                </Alert>
                             )}
                         </Box>
+
+                        {/* Konum Bul Butonu (Adres Gir modu) */}
+                        {locationMethod === 1 && (
+                            <Box>
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleGeocodeAddress}
+                                    disabled={isGeocoding || !formData.street.trim() || !formData.province.trim()}
+                                    startIcon={isGeocoding ? <CircularProgress size={20} /> : <SearchIcon />}
+                                    fullWidth
+                                    size="large"
+                                    sx={{ 
+                                        py: 1.5,
+                                        borderRadius: 2,
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    {isGeocoding ? 'Konum Aranıyor...' : 'Konumu Bul'}
+                                </Button>
+                                {location && (
+                                    <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
+                                        Konum bulundu: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                                    </Alert>
+                                )}
+                                {resolvedAddress && (
+                                    <Alert
+                                        severity="info"
+                                        icon={<LocationOnIcon />}
+                                        sx={{ mt: 2, borderRadius: 2 }}
+                                    >
+                                        Bulunan adres: {resolvedAddress}
+                                    </Alert>
+                                )}
+                            </Box>
+                        )}
 
                         {/* Kaydet Butonu */}
                         <Button 

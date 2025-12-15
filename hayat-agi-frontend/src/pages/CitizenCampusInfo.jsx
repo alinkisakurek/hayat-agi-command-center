@@ -22,7 +22,8 @@ import {
   Stack,
   Divider,
   Avatar,
-  IconButton
+  IconButton,
+  Autocomplete
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -33,6 +34,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PetsIcon from '@mui/icons-material/Pets';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { diseases, medications, prosthetics, getAllMedications } from '../data/healthData';
 
 const BLOOD_GROUPS = [
   'A Rh(+)', 'A Rh(-)',
@@ -53,7 +55,9 @@ const CitizenCampusInfo = () => {
     gender: '',
     birthDate: null,
     bloodGroup: '',
-    conditions: ''
+    conditions: '',
+    medications: '',
+    prosthetics: ''
   });
   const [petForm, setPetForm] = useState({
     name: '',
@@ -61,6 +65,9 @@ const CitizenCampusInfo = () => {
     breed: ''
   });
   const [touched, setTouched] = useState({});
+  const [selectedDiseases, setSelectedDiseases] = useState([]);
+  const [selectedMedications, setSelectedMedications] = useState([]);
+  const [selectedProsthetics, setSelectedProsthetics] = useState([]);
 
   const handleOpenDialog = () => {
     setEditingPersonId(null);
@@ -69,9 +76,14 @@ const CitizenCampusInfo = () => {
       gender: '',
       birthDate: null,
       bloodGroup: '',
-      conditions: ''
+      conditions: '',
+      medications: '',
+      prosthetics: ''
     });
     setTouched({});
+    setSelectedDiseases([]);
+    setSelectedMedications([]);
+    setSelectedProsthetics([]);
     setIsDialogOpen(true);
   };
 
@@ -83,9 +95,14 @@ const CitizenCampusInfo = () => {
       gender: '',
       birthDate: null,
       bloodGroup: '',
-      conditions: ''
+      conditions: '',
+      medications: '',
+      prosthetics: ''
     });
     setTouched({});
+    setSelectedDiseases([]);
+    setSelectedMedications([]);
+    setSelectedProsthetics([]);
   };
 
   const handleOpenPetDialog = () => {
@@ -150,8 +167,23 @@ const CitizenCampusInfo = () => {
       return;
     }
 
+    const conditionsString = selectedDiseases.length
+      ? selectedDiseases.map((d) => d.name).join(', ')
+      : form.conditions || '';
+
+    const medicationsString = selectedMedications.length
+      ? selectedMedications.map((m) => m.name).join(', ')
+      : form.medications || '';
+
+    const prostheticsString = selectedProsthetics.length
+      ? selectedProsthetics.map((p) => p.name).join(', ')
+      : form.prosthetics || '';
+
     const personData = {
       ...form,
+      conditions: conditionsString,
+      medications: medicationsString,
+      prosthetics: prostheticsString,
       birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : ''
     };
 
@@ -356,8 +388,39 @@ const CitizenCampusInfo = () => {
                           gender: person.gender,
                           birthDate: person.birthDate ? dayjs(person.birthDate) : null,
                           bloodGroup: person.bloodGroup,
-                          conditions: person.conditions || ''
+                          conditions: person.conditions || '',
+                          medications: person.medications || '',
+                          prosthetics: person.prosthetics || ''
                         });
+
+                        // Mevcut rahatsızlıkları healthData listesindeki objelere eşleştir
+                        const conditionsArray = person.conditions
+                          ? person.conditions.split(',').map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        const matchedDiseases = conditionsArray.map((name) =>
+                          diseases.find((d) => d.name === name) || { id: name, name, category: 'Diğer' }
+                        );
+                        setSelectedDiseases(matchedDiseases);
+
+                        // Mevcut ilaçları healthData listesindeki objelere eşleştir
+                        const medicationsArray = person.medications
+                          ? person.medications.split(',').map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        const allMeds = getAllMedications();
+                        const matchedMeds = medicationsArray.map((name) =>
+                          allMeds.find((m) => m.name === name) || { id: name, name, category: 'Diğer' }
+                        );
+                        setSelectedMedications(matchedMeds);
+
+                        // Mevcut protezleri healthData listesindeki objelere eşleştir
+                        const prostheticsArray = person.prosthetics
+                          ? person.prosthetics.split(',').map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        const matchedProsthetics = prostheticsArray.map((name) =>
+                          prosthetics.find((p) => p.name === name) || { id: name, name, category: 'Diğer' }
+                        );
+                        setSelectedProsthetics(matchedProsthetics);
+
                         setTouched({});
                         setIsDialogOpen(true);
                       }}
@@ -386,6 +449,26 @@ const CitizenCampusInfo = () => {
                         </Typography>
                         <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
                           {person.conditions}
+                        </Typography>
+                      </Box>
+                    )}
+                    {person.medications && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Kullandığı İlaçlar
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
+                          {person.medications}
+                        </Typography>
+                      </Box>
+                    )}
+                    {person.prosthetics && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          Protez / Cihazlar
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
+                          {person.prosthetics}
                         </Typography>
                       </Box>
                     )}
@@ -626,14 +709,181 @@ const CitizenCampusInfo = () => {
                 ))}
               </TextField>
 
-              <TextField
-                fullWidth
-                label="Rahatsızlıklar"
-                multiline
-                minRows={3}
-                value={form.conditions}
-                onChange={handleChange('conditions')}
-                placeholder="Kronik hastalıklar, alerjiler vb. bilgileri giriniz."
+              {/* Rahatsızlıklar - healthData tabanlı dropdown */}
+              <Autocomplete
+                multiple
+                options={diseases}
+                getOptionLabel={(option) => option.name}
+                value={selectedDiseases}
+                onChange={(_, newValue) => {
+                  setSelectedDiseases(newValue);
+                  setForm((prev) => ({
+                    ...prev,
+                    conditions: newValue.map((d) => d.name).join(', ')
+                  }));
+                }}
+                filterSelectedOptions
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Rahatsızlıklar"
+                    placeholder="Rahatsızlık arayın veya seçin"
+                    helperText="Kronik hastalıklar, alerjiler vb. sağlık durumlarınızı seçin"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                    />
+                  ))
+                }
+                groupBy={(option) => option.category}
+                renderGroup={(params) => (
+                  <li key={params.key}>
+                    <Box
+                      component="div"
+                      sx={{
+                        position: 'sticky',
+                        top: '-8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0, 76, 180, 0.08)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                        zIndex: 1
+                      }}
+                    >
+                      {params.group}
+                    </Box>
+                    <Box component="ul" sx={{ padding: 0 }}>
+                      {params.children}
+                    </Box>
+                  </li>
+                )}
+                sx={{ width: '100%' }}
+              />
+
+              {/* Kullandığı İlaçlar - healthData tabanlı dropdown */}
+              <Autocomplete
+                multiple
+                options={getAllMedications()}
+                getOptionLabel={(option) => option.name}
+                value={selectedMedications}
+                onChange={(_, newValue) => {
+                  setSelectedMedications(newValue);
+                  setForm((prev) => ({
+                    ...prev,
+                    medications: newValue.map((m) => m.name).join(', ')
+                  }));
+                }}
+                filterSelectedOptions
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kullandığı İlaçlar"
+                    placeholder="İlaç arayın veya seçin"
+                    helperText="Düzenli olarak kullandığı ilaçları belirtin"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                    />
+                  ))
+                }
+                groupBy={(option) => option.category}
+                renderGroup={(params) => (
+                  <li key={params.key}>
+                    <Box
+                      component="div"
+                      sx={{
+                        position: 'sticky',
+                        top: '-8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0, 76, 180, 0.08)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                        zIndex: 1
+                      }}
+                    >
+                      {params.group}
+                    </Box>
+                    <Box component="ul" sx={{ padding: 0 }}>
+                      {params.children}
+                    </Box>
+                  </li>
+                )}
+                sx={{ width: '100%' }}
+              />
+
+              {/* Protez / Tıbbi Cihazlar - healthData tabanlı dropdown */}
+              <Autocomplete
+                multiple
+                options={prosthetics}
+                getOptionLabel={(option) => option.name}
+                value={selectedProsthetics}
+                onChange={(_, newValue) => {
+                  setSelectedProsthetics(newValue);
+                  setForm((prev) => ({
+                    ...prev,
+                    prosthetics: newValue.map((p) => p.name).join(', ')
+                  }));
+                }}
+                filterSelectedOptions
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kullandığı Protez / Cihazlar"
+                    placeholder="Protez veya cihaz arayın veya seçin"
+                    helperText="Kullandığı protez veya tıbbi cihazları belirtin"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                    />
+                  ))
+                }
+                groupBy={(option) => option.category}
+                renderGroup={(params) => (
+                  <li key={params.key}>
+                    <Box
+                      component="div"
+                      sx={{
+                        position: 'sticky',
+                        top: '-8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0, 76, 180, 0.08)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                        zIndex: 1
+                      }}
+                    >
+                      {params.group}
+                    </Box>
+                    <Box component="ul" sx={{ padding: 0 }}>
+                      {params.children}
+                    </Box>
+                  </li>
+                )}
+                sx={{ width: '100%' }}
               />
             </Stack>
           </Box>
