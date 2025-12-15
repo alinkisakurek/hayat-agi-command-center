@@ -18,6 +18,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../constants/routes';
+import { USER_ROLES } from '../constants/userRoles';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -65,7 +66,19 @@ const Login = () => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         console.log("Giriş Başarılı:", data.user);
-        navigate(ROUTES.DASHBOARD);
+
+        // Kullanıcının rolüne göre yönlendirme:
+        // - Admin / Administrator -> Admin Dashboard (/dashboard)
+        // - Diğer tüm roller -> Vatandaş Paneli (/panel)
+        const role = data.user?.role;
+        const isAdmin =
+          role === USER_ROLES.ADMIN || role === USER_ROLES.ADMINISTRATOR;
+
+        if (isAdmin) {
+          navigate(ROUTES.DASHBOARD);
+        } else {
+          navigate('/panel');
+        }
       } else {
         setError(data.error || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
       }

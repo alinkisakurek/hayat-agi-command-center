@@ -22,6 +22,10 @@ import {
   Stack,
   Divider
 } from '@mui/material';
+import RouterIcon from '@mui/icons-material/Router';
+import BatteryStdIcon from '@mui/icons-material/BatteryStd';
+import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
+import SmartphoneIcon from '@mui/icons-material/Smartphone';
 
 const BLOOD_GROUPS = [
   'A Rh(+)', 'A Rh(-)',
@@ -30,10 +34,39 @@ const BLOOD_GROUPS = [
   '0 Rh(+)', '0 Rh(-)'
 ];
 
+// TODO: Bu cihaz listesi şu an için örnek veridir.
+// Gerçek uygulamada backend'den kullanıcının cihazları çekilecektir.
+const myGateways = [
+  {
+    id: 1,
+    name: 'Ev (Salon)',
+    status: 'active',
+    battery: 92,
+    signal: 'strong',
+    connectedPhones: 4,
+    lastSeen: 'Az önce',
+    address: 'Çankaya Mah. 102. Sokak No:5'
+  },
+  {
+    id: 2,
+    name: 'İş Yeri (Ofis)',
+    status: 'low_battery',
+    battery: 15,
+    signal: 'medium',
+    connectedPhones: 12,
+    lastSeen: '10 dakika önce',
+    address: 'Teknokent B Blok Kat:2'
+  }
+];
+
 const CitizenCampusInfo = () => {
-  const [people, setPeople] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [isDeviceDialogOpen, setIsDeviceDialogOpen] = useState(false);
+
+  // Her cihaz için ayrı kişi / evcil hayvan listesi tut
+  const [peopleByDevice, setPeopleByDevice] = useState({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [pets, setPets] = useState([]);
+  const [petsByDevice, setPetsByDevice] = useState({});
   const [isPetDialogOpen, setIsPetDialogOpen] = useState(false);
   const [editingPersonId, setEditingPersonId] = useState(null);
   const [editingPetId, setEditingPetId] = useState(null);
@@ -50,6 +83,23 @@ const CitizenCampusInfo = () => {
     breed: ''
   });
   const [touched, setTouched] = useState({});
+
+  const selectedDeviceId = selectedDevice?.id;
+  const people = selectedDeviceId ? peopleByDevice[selectedDeviceId] || [] : [];
+  const pets = selectedDeviceId ? petsByDevice[selectedDeviceId] || [] : [];
+
+  const handleOpenDeviceDialog = () => {
+    setIsDeviceDialogOpen(true);
+  };
+
+  const handleCloseDeviceDialog = () => {
+    setIsDeviceDialogOpen(false);
+  };
+
+  const handleSelectDevice = (device) => {
+    setSelectedDevice(device);
+    setIsDeviceDialogOpen(false);
+  };
 
   const handleOpenDialog = () => {
     setEditingPersonId(null);
@@ -133,23 +183,35 @@ const CitizenCampusInfo = () => {
       return;
     }
 
-    if (editingPersonId) {
-      setPeople((prev) =>
-        prev.map((p) =>
+    if (!selectedDeviceId) {
+      return;
+    }
+
+    setPeopleByDevice((prev) => {
+      const currentList = prev[selectedDeviceId] || [];
+
+      let nextList;
+      if (editingPersonId) {
+        nextList = currentList.map((p) =>
           p.id === editingPersonId
             ? { ...p, ...form }
             : p
-        )
-      );
-    } else {
-      setPeople((prev) => [
+        );
+      } else {
+        nextList = [
+          ...currentList,
+          {
+            id: Date.now(),
+            ...form
+          }
+        ];
+      }
+
+      return {
         ...prev,
-        {
-          id: Date.now(),
-          ...form
-        }
-      ]);
-    }
+        [selectedDeviceId]: nextList
+      };
+    });
 
     handleCloseDialog();
   };
@@ -166,33 +228,59 @@ const CitizenCampusInfo = () => {
       return;
     }
 
-    if (editingPetId) {
-      setPets((prev) =>
-        prev.map((pet) =>
+    if (!selectedDeviceId) {
+      return;
+    }
+
+    setPetsByDevice((prev) => {
+      const currentList = prev[selectedDeviceId] || [];
+
+      let nextList;
+      if (editingPetId) {
+        nextList = currentList.map((pet) =>
           pet.id === editingPetId
             ? { ...pet, ...petForm }
             : pet
-        )
-      );
-    } else {
-      setPets((prev) => [
+        );
+      } else {
+        nextList = [
+          ...currentList,
+          {
+            id: Date.now(),
+            ...petForm
+          }
+        ];
+      }
+
+      return {
         ...prev,
-        {
-          id: Date.now(),
-          ...petForm
-        }
-      ]);
-    }
+        [selectedDeviceId]: nextList
+      };
+    });
 
     handleClosePetDialog();
   };
 
   return (
     <Box>
-      {/* Yerleşke Bilgileri Üst Bölüm */}
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
-        Yerleşke Bilgileri
-      </Typography>
+      {/* Yerleşke Bilgileri Üst Bölüm + Cihaz Seçimi */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h5" fontWeight="bold">
+          Yerleşke Bilgileri
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {selectedDevice && (
+            <Chip
+              label={`Seçili Cihaz: ${selectedDevice.name}`}
+              color="primary"
+              variant="outlined"
+            />
+          )}
+          <Button variant="outlined" onClick={handleOpenDeviceDialog}>
+            Cihaz Seç
+          </Button>
+        </Box>
+      </Box>
 
       <Paper
         elevation={0}
@@ -212,6 +300,77 @@ const CitizenCampusInfo = () => {
           kat sayısı, toplam daire/oda bilgisi gibi veriler burada özetlenebilir.
           (Bu alan şu anda örnek amaçlı yer tutucu metin içermektedir.)
         </Typography>
+
+        {/* Seçilen Cihaz Önizlemesi */}
+        <Box sx={{ mt: 3 }}>
+          {selectedDevice ? (
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: '1px solid rgba(0,0,0,0.08)',
+                p: 1.5
+              }}
+            >
+              <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'primary.light',
+                      color: 'primary.main',
+                      borderRadius: 2
+                    }}
+                  >
+                    <RouterIcon />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {selectedDevice.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedDevice.address}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Son görülme: {selectedDevice.lastSeen}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <BatteryStdIcon color={selectedDevice.battery > 50 ? 'success' : selectedDevice.battery > 20 ? 'warning' : 'error'} />
+                      <Typography variant="body2">
+                        Batarya: <strong>%{selectedDevice.battery}</strong>
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <SmartphoneIcon color="primary" />
+                      <Typography variant="body2">
+                        Bağlı Cihaz: <strong>{selectedDevice.connectedPhones}</strong>
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <SignalCellularAltIcon color={selectedDevice.signal === 'strong' ? 'success' : 'warning'} />
+                      <Typography variant="body2">
+                        Mesh: <strong>{selectedDevice.signal === 'strong' ? 'Mükemmel' : 'Orta Seviye'}</strong>
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Henüz bir cihaz seçilmedi. Lütfen üst kısımdan "Cihaz Seç" butonuna tıklayarak bu yerleşke için kullanmak istediğiniz gateway cihazını belirleyin.
+            </Typography>
+          )}
+        </Box>
       </Paper>
 
       {/* Kişiler Bölümü */}
@@ -219,7 +378,11 @@ const CitizenCampusInfo = () => {
         <Typography variant="h6" fontWeight="bold">
           Kişiler
         </Typography>
-        <Button variant="contained" onClick={handleOpenDialog}>
+        <Button
+          variant="contained"
+          onClick={handleOpenDialog}
+          disabled={!selectedDevice}
+        >
           Kişi Ekle
         </Button>
       </Box>
@@ -236,9 +399,15 @@ const CitizenCampusInfo = () => {
           }}
         >
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Henüz kayıtlı bir kişi bulunmuyor.
+            {selectedDevice
+              ? 'Henüz bu cihaza kayıtlı bir kişi bulunmuyor.'
+              : 'Kişi ekleyebilmek için önce bir cihaz seçmelisiniz.'}
           </Typography>
-          <Button variant="outlined" onClick={handleOpenDialog}>
+          <Button
+            variant="outlined"
+            onClick={handleOpenDialog}
+            disabled={!selectedDevice}
+          >
             Kişi Ekle
           </Button>
         </Paper>
@@ -297,7 +466,11 @@ const CitizenCampusInfo = () => {
           <Typography variant="h6" fontWeight="bold">
             Evcil Hayvanlar
           </Typography>
-          <Button variant="outlined" onClick={handleOpenPetDialog}>
+          <Button
+            variant="outlined"
+            onClick={handleOpenPetDialog}
+            disabled={!selectedDevice}
+          >
             Evcil Hayvan Ekle
           </Button>
         </Box>
@@ -314,9 +487,15 @@ const CitizenCampusInfo = () => {
             }}
           >
             <Typography variant="body2" sx={{ mb: 1 }}>
-              Henüz kayıtlı bir evcil hayvan bulunmuyor.
+              {selectedDevice
+                ? 'Henüz bu cihaza kayıtlı bir evcil hayvan bulunmuyor.'
+                : 'Evcil hayvan ekleyebilmek için önce bir cihaz seçmelisiniz.'}
             </Typography>
-            <Button variant="outlined" onClick={handleOpenPetDialog}>
+            <Button
+              variant="outlined"
+              onClick={handleOpenPetDialog}
+              disabled={!selectedDevice}
+            >
               Evcil Hayvan Ekle
             </Button>
           </Paper>
@@ -504,6 +683,79 @@ const CitizenCampusInfo = () => {
             sx={{ ml: 1 }}
           >
             Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cihaz Seçim Diyaloğu */}
+      <Dialog
+        open={isDeviceDialogOpen}
+        onClose={handleCloseDeviceDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Cihaz Seç</DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {myGateways.map((device) => (
+              <Grid item xs={12} md={6} key={device.id}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      boxShadow: 3,
+                      borderColor: 'primary.main'
+                    }
+                  }}
+                  onClick={() => handleSelectDevice(device)}
+                >
+                  <CardContent>
+                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          bgcolor: 'primary.light',
+                          color: 'primary.main',
+                          borderRadius: 2
+                        }}
+                      >
+                        <RouterIcon />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          {device.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {device.address}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Son görülme: {device.lastSeen}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Stack direction="row" spacing={2}>
+                      <Chip
+                        label={device.status === 'active' ? 'Aktif & Hazır' : 'Pil Düşük!'}
+                        color={device.status === 'active' ? 'success' : 'error'}
+                        size="small"
+                      />
+                      <Chip
+                        label={`Bağlı: ${device.connectedPhones}`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeviceDialog} color="inherit">
+            Kapat
           </Button>
         </DialogActions>
       </Dialog>
