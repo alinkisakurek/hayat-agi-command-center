@@ -25,6 +25,7 @@ const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    tcNumber: '',
     email: '',
     password: '',
   });
@@ -33,6 +34,15 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
 
   const handleInputChange = (field) => (e) => {
+    if (field === 'tcNumber') {
+      const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 11);
+      setFormData({
+        ...formData,
+        [field]: onlyDigits,
+      });
+      setError('');
+      return;
+    }
     setFormData({
       ...formData,
       [field]: e.target.value,
@@ -46,7 +56,7 @@ const Register = () => {
     setLoading(true);
 
     // 1. Boş alan kontrolü
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+    if (!formData.firstName || !formData.lastName || !formData.tcNumber || !formData.email || !formData.password) {
       setError('Lütfen tüm alanları doldurun');
       setLoading(false);
       return;
@@ -67,17 +77,36 @@ const Register = () => {
       return;
     }
 
+    // 4. TC Kimlik No doğrulama
+    const isValidTc = (tc) => {
+      if (!/^\d{11}$/.test(tc)) return false;
+      if (tc[0] === '0') return false;
+      const d = tc.split('').map(Number);
+      const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];
+      const evenSum = d[1] + d[3] + d[5] + d[7];
+      const d10 = ((oddSum * 7) - evenSum) % 10;
+      const d11 = (d.slice(0, 10).reduce((a, b) => a + b, 0)) % 10;
+      return d[9] === d10 && d[10] === d11;
+    };
+    if (!isValidTc(formData.tcNumber)) {
+      setError('Geçerli bir TC Kimlik Numarası giriniz');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // TODO: Backend API çağrısı burada yapılacak
-      // Örn: await authService.register(formData);
-      console.log('Kayıt verileri:', formData);
-
-      // Başarılı simülasyonu
-      setTimeout(() => {
-        setLoading(false);
-        navigate(ROUTES.LOGIN);
-      }, 1000);
-
+      const payload = {
+        name: formData.firstName,
+        surname: formData.lastName,
+        tcNumber: formData.tcNumber,
+        email: formData.email,
+        password: formData.password,
+      };
+      // API çağrısı
+      const { register } = await import('../services/authService');
+      await register(payload);
+      setLoading(false);
+      navigate(ROUTES.LOGIN);
     } catch (err) {
       setError('Kayıt işlemi sırasında bir hata oluştu.');
       setLoading(false);
@@ -194,6 +223,27 @@ const Register = () => {
                   startAdornment: (
                     <InputAdornment position="start">
                       <EmailIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {/* TC Kimlik No */}
+              <TextField
+                fullWidth
+                id="tcNumber"
+                label="TC Kimlik No"
+                name="tcNumber"
+                value={formData.tcNumber}
+                onChange={handleInputChange('tcNumber')}
+                disabled={loading}
+                required
+                inputProps={{ inputMode: 'numeric', pattern: '\\d*', maxLength: 11 }}
+                helperText="11 haneli TC Kimlik Numaranızı giriniz"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BadgeIcon color="action" />
                     </InputAdornment>
                   ),
                 }}

@@ -184,6 +184,31 @@ exports.login = async (req, res) => {
   }
 };
 
+// Basit kayıt uç noktası (mock) - TC Kimlik doğrulaması ile
 exports.register = (req, res) => {
-  res.status(200).json({ message: 'Kayıt başarılı (Simülasyon)' });
+  try {
+    const { name, surname, email, password, tcNumber } = req.body || {};
+    if (!name || !surname || !email || !password || !tcNumber) {
+      return res.status(400).json({ message: 'Ad, soyad, e-posta, şifre ve TC Kimlik zorunludur' });
+    }
+    // TC Kimlik doğrulama
+    const isValidTc = (tc) => {
+      if (!/^\d{11}$/.test(tc)) return false;
+      if (tc[0] === '0') return false;
+      const d = tc.split('').map(Number);
+      const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];
+      const evenSum = d[1] + d[3] + d[5] + d[7];
+      const d10 = ((oddSum * 7) - evenSum) % 10;
+      const d11 = (d.slice(0, 10).reduce((a, b) => a + b, 0)) % 10;
+      return d[9] === d10 && d[10] === d11;
+    };
+    if (!isValidTc(tcNumber)) {
+      return res.status(400).json({ message: 'Geçersiz TC Kimlik Numarası' });
+    }
+
+    // Not: Bu bir simülasyondur, DB kaydı yapmaz
+    return res.status(200).json({ message: 'Kayıt başarılı (Simülasyon)', user: { name, surname, email, tcNumber } });
+  } catch (e) {
+    return res.status(500).json({ message: 'Kayıt sırasında hata oluştu' });
+  }
 };

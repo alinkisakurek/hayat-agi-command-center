@@ -18,6 +18,28 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 6 },
     role: { type: String, enum: ['admin', 'citizen'], default: 'citizen' },
 
+    // TC Kimlik Numarası
+    tcNumber: {
+      type: String,
+      unique: true,
+      sparse: true, // bazı kullanıcılar doldurmayabilir
+      trim: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return true; // boş ise geç
+          if (!/^\d{11}$/.test(v)) return false;
+          if (v[0] === '0') return false;
+          const d = v.split('').map(Number);
+          const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];
+          const evenSum = d[1] + d[3] + d[5] + d[7];
+          const d10 = ((oddSum * 7) - evenSum) % 10;
+          const d11 = (d.slice(0, 10).reduce((a, b) => a + b, 0)) % 10;
+          return d[9] === d10 && d[10] === d11;
+        },
+        message: 'Geçersiz TC Kimlik Numarası'
+      }
+    },
+
     phoneNumber: { type: String, default: null, trim: true },
     tokenVersion: { type: Number, default: 0 },
 
