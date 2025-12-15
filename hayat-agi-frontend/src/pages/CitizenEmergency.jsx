@@ -24,10 +24,7 @@ const CitizenEmergency = () => {
   const [emergencyStatus, setEmergencyStatus] = useState('normal');
 
   const emergencyContacts = [
-    { name: 'Acil Durum Hattı', number: '112', type: 'emergency' },
-    { name: 'İtfaiye', number: '110', type: 'emergency' },
-    { name: 'Polis', number: '155', type: 'emergency' },
-    { name: 'Jandarma', number: '156', type: 'emergency' }
+    { name: 'Acil Durum Hattı', number: '112', type: 'emergency' }
   ];
 
   return (
