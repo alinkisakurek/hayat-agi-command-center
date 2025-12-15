@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -22,7 +22,8 @@ import {
   Stack,
   Divider,
   Avatar,
-  IconButton
+  IconButton,
+  CircularProgress
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -32,16 +33,19 @@ import 'dayjs/locale/tr';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PetsIcon from '@mui/icons-material/Pets';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 
-const BLOOD_GROUPS = [
-  'A Rh(+)', 'A Rh(-)',
-  'B Rh(+)', 'B Rh(-)',
-  'AB Rh(+)', 'AB Rh(-)',
-  '0 Rh(+)', '0 Rh(-)'
-];
+
+import { getSystemOptions } from '../services/metadataService';
 
 const CitizenCampusInfo = () => {
+
+  const [options, setOptions] = useState({
+    bloodGroups: [],
+    genderLabels: {}
+  });
+
+  const [loadingOptions, setLoadingOptions] = useState(true);
+
   const [people, setPeople] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [pets, setPets] = useState([]);
@@ -61,6 +65,26 @@ const CitizenCampusInfo = () => {
     breed: ''
   });
   const [touched, setTouched] = useState({});
+
+  // 3. ADIM: Sayfa Açılınca Backend'den Seçenekleri Çek
+  useEffect(() => {
+    const fetchVeri = async () => {
+      try {
+        const data = await getSystemOptions();
+        console.log("Backend Verisi Geldi:", data); // Kontrol için
+
+        setOptions({
+          bloodGroups: data.healthOptions?.bloodGroups || [],
+          genderLabels: data.genderLabels || {}
+        });
+      } catch (e) {
+        console.error("Seçenekler yüklenirken hata:", e);
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+    fetchVeri();
+  }, []);
 
   const handleOpenDialog = () => {
     setEditingPersonId(null);
@@ -152,7 +176,7 @@ const CitizenCampusInfo = () => {
 
     const personData = {
       ...form,
-      birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : ''
+      birthDate: form.birthDate ? form.birthDate.format('DD/MM/YYYY') : ''
     };
 
     if (editingPersonId) {
@@ -243,7 +267,6 @@ const CitizenCampusInfo = () => {
         <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
           Yerleşkeniz ile ilgili temel bilgiler bu alanda görüntülenecektir. Adres,
           kat sayısı, toplam daire/oda bilgisi gibi veriler burada özetlenebilir.
-          (Bu alan şu anda örnek amaçlı yer tutucu metin içermektedir.)
         </Typography>
       </Paper>
 
@@ -253,8 +276,8 @@ const CitizenCampusInfo = () => {
           Kişiler
         </Typography>
         {people.length > 0 && (
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
             startIcon={<PersonAddIcon />}
             onClick={handleOpenDialog}
@@ -287,8 +310,8 @@ const CitizenCampusInfo = () => {
           <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
             Henüz kayıtlı bir kişi bulunmuyor.
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
             startIcon={<PersonAddIcon />}
             onClick={handleOpenDialog}
@@ -307,10 +330,10 @@ const CitizenCampusInfo = () => {
         <Grid container spacing={2.5}>
           {people.map((person) => (
             <Grid item xs={12} md={6} key={person.id}>
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  borderRadius: 4, 
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 4,
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                   transition: 'all 0.3s ease-in-out',
@@ -333,15 +356,16 @@ const CitizenCampusInfo = () => {
                           {person.name}
                         </Typography>
                         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 0.75 }}>
-                          <Chip 
-                            label={person.gender === 'male' ? 'Erkek' : 'Kadın'} 
+                          <Chip
+                            // DÜZELTME: Kartta Backend'den gelen etiketi (Örn: Erkek) göster
+                            label={options.genderLabels[person.gender] || person.gender}
                             size="small"
                             sx={{ fontSize: '0.8rem', fontWeight: 600, height: 26 }}
                           />
-                          <Chip 
-                            label={person.bloodGroup} 
-                            size="small" 
-                            color="primary" 
+                          <Chip
+                            label={person.bloodGroup}
+                            size="small"
+                            color="primary"
                             variant="outlined"
                             sx={{ fontSize: '0.8rem', fontWeight: 600, height: 26 }}
                           />
@@ -354,7 +378,7 @@ const CitizenCampusInfo = () => {
                         setForm({
                           name: person.name,
                           gender: person.gender,
-                          birthDate: person.birthDate ? dayjs(person.birthDate) : null,
+                          birthDate: person.birthDate ? dayjs(person.birthDate, 'DD/MM/YYYY') : null,
                           bloodGroup: person.bloodGroup,
                           conditions: person.conditions || ''
                         });
@@ -405,8 +429,8 @@ const CitizenCampusInfo = () => {
             Evcil Hayvanlar
           </Typography>
           {pets.length > 0 && (
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               size="large"
               startIcon={<PetsIcon />}
               onClick={handleOpenPetDialog}
@@ -439,8 +463,8 @@ const CitizenCampusInfo = () => {
             <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
               Henüz kayıtlı bir evcil hayvan bulunmuyor.
             </Typography>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               size="large"
               startIcon={<PetsIcon />}
               onClick={handleOpenPetDialog}
@@ -459,10 +483,10 @@ const CitizenCampusInfo = () => {
           <Grid container spacing={2.5}>
             {pets.map((pet) => (
               <Grid item xs={12} md={6} key={pet.id}>
-                <Card 
-                  elevation={0} 
-                  sx={{ 
-                    borderRadius: 4, 
+                <Card
+                  elevation={0}
+                  sx={{
+                    borderRadius: 4,
                     border: '1px solid rgba(0,0,0,0.08)',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                     transition: 'all 0.3s ease-in-out',
@@ -545,102 +569,119 @@ const CitizenCampusInfo = () => {
           {editingPersonId ? 'Kişiyi Düzenle' : 'Kişi Ekle'}
         </DialogTitle>
         <DialogContent dividers sx={{ pt: 2.5 }}>
-          <Box sx={{ maxWidth: 700 }}>
-            <Stack spacing={2.5}>
-              <TextField
-                fullWidth
-                label="İsim"
-                value={form.name}
-                onChange={handleChange('name')}
-                onBlur={handleBlur('name')}
-                error={isRequiredError('name')}
-                helperText={isRequiredError('name') ? 'İsim zorunlu bir alandır.' : ''}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    fontSize: '1rem'
-                  }
-                }}
-              />
-
-              <FormControl component="fieldset" error={isRequiredError('gender')} fullWidth>
-                <FormLabel component="legend" sx={{ fontSize: '1rem', fontWeight: 600, mb: 1.5 }}>
-                  Cinsiyet
-                </FormLabel>
-                <RadioGroup
-                  row
-                  value={form.gender}
-                  onChange={handleChange('gender')}
-                  onBlur={handleBlur('gender')}
-                >
-                  <FormControlLabel 
-                    value="female" 
-                    control={<Radio />} 
-                    label={<Typography sx={{ fontSize: '1rem' }}>Kadın</Typography>} 
-                  />
-                  <FormControlLabel 
-                    value="male" 
-                    control={<Radio />} 
-                    label={<Typography sx={{ fontSize: '1rem' }}>Erkek</Typography>} 
-                  />
-                </RadioGroup>
-                {isRequiredError('gender') && (
-                  <Typography variant="body2" color="error" sx={{ mt: 1, fontSize: '0.875rem' }}>
-                    Cinsiyet zorunlu bir alandır.
-                  </Typography>
-                )}
-              </FormControl>
-
-              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
-                <DatePicker
-                  label="Doğum Tarihi"
-                  value={form.birthDate}
-                  onChange={handleDateChange}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      variant: 'outlined',
-                      error: isRequiredError('birthDate'),
-                      helperText: isRequiredError('birthDate') ? 'Doğum tarihi zorunlu bir alandır.' : '',
-                      onBlur: handleBlur('birthDate')
+          {/* Yükleniyor Kontrolü */}
+          {loadingOptions ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box sx={{ maxWidth: 700 }}>
+              <Stack spacing={2.5}>
+                <TextField
+                  fullWidth
+                  label="İsim"
+                  value={form.name}
+                  onChange={handleChange('name')}
+                  onBlur={handleBlur('name')}
+                  error={isRequiredError('name')}
+                  helperText={isRequiredError('name') ? 'İsim zorunlu bir alandır.' : ''}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: '1rem'
                     }
                   }}
-                  maxDate={dayjs()}
-                  format="DD/MM/YYYY"
                 />
-              </LocalizationProvider>
 
-              <TextField
-                select
-                fullWidth
-                label="Kan Grubu"
-                value={form.bloodGroup}
-                onChange={handleChange('bloodGroup')}
-                onBlur={handleBlur('bloodGroup')}
-                error={isRequiredError('bloodGroup')}
-                helperText={isRequiredError('bloodGroup') ? 'Kan grubu zorunlu bir alandır.' : ''}
-              >
-                {BLOOD_GROUPS.map((group) => (
-                  <MenuItem key={group} value={group}>
-                    {group}
-                  </MenuItem>
-                ))}
-              </TextField>
+                {/* 4. ADIM: CİNSİYET (Dinamik Backend Entegrasyonu) */}
+                <FormControl component="fieldset" error={isRequiredError('gender')} fullWidth>
+                  <FormLabel component="legend" sx={{ fontSize: '1rem', fontWeight: 600, mb: 1.5 }}>
+                    Cinsiyet
+                  </FormLabel>
+                  <RadioGroup
+                    row
+                    value={form.gender}
+                    onChange={handleChange('gender')}
+                    onBlur={handleBlur('gender')}
+                  >
+                    {/* Backend'den gelen etiketleri basıyoruz */}
+                    {Object.entries(options.genderLabels).length > 0 ? (
+                      Object.entries(options.genderLabels).map(([key, label]) => (
+                        <FormControlLabel
+                          key={key}
+                          value={key}
+                          control={<Radio />}
+                          label={<Typography sx={{ fontSize: '1rem' }}>{label}</Typography>}
+                        />
+                      ))
+                    ) : (
+                      // Yüklenmezse yedek (Fallback)
+                      <>
+                        <FormControlLabel value="female" control={<Radio />} label="Kadın" />
+                        <FormControlLabel value="male" control={<Radio />} label="Erkek" />
+                      </>
+                    )}
+                  </RadioGroup>
+                  {isRequiredError('gender') && (
+                    <Typography variant="body2" color="error" sx={{ mt: 1, fontSize: '0.875rem' }}>
+                      Cinsiyet zorunlu bir alandır.
+                    </Typography>
+                  )}
+                </FormControl>
 
-              <TextField
-                fullWidth
-                label="Rahatsızlıklar"
-                multiline
-                minRows={3}
-                value={form.conditions}
-                onChange={handleChange('conditions')}
-                placeholder="Kronik hastalıklar, alerjiler vb. bilgileri giriniz."
-              />
-            </Stack>
-          </Box>
+                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
+                  <DatePicker
+                    label="Doğum Tarihi"
+                    value={form.birthDate}
+                    onChange={handleDateChange}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        variant: 'outlined',
+                        error: isRequiredError('birthDate'),
+                        helperText: isRequiredError('birthDate') ? 'Doğum tarihi zorunlu bir alandır.' : '',
+                        onBlur: handleBlur('birthDate')
+                      }
+                    }}
+                    maxDate={dayjs()}
+                    format="DD/MM/YYYY"
+                  />
+                </LocalizationProvider>
+
+                {/* 5. ADIM: KAN GRUBU (Dinamik Backend Entegrasyonu) */}
+                <TextField
+                  select
+                  fullWidth
+                  label="Kan Grubu"
+                  value={form.bloodGroup}
+                  onChange={handleChange('bloodGroup')}
+                  onBlur={handleBlur('bloodGroup')}
+                  error={isRequiredError('bloodGroup')}
+                  helperText={isRequiredError('bloodGroup') ? 'Kan grubu zorunlu bir alandır.' : ''}
+                >
+                  {/* Backend'den gelen listeyi basıyoruz */}
+                  {options.bloodGroups.map((group) => (
+                    <MenuItem key={group} value={group}>
+                      {group}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  fullWidth
+                  label="Rahatsızlıklar"
+                  multiline
+                  minRows={3}
+                  value={form.conditions}
+                  onChange={handleChange('conditions')}
+                  placeholder="Kronik hastalıklar, alerjiler vb. bilgileri giriniz."
+                />
+              </Stack>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button 
-            onClick={handleCloseDialog} 
+          <Button
+            onClick={handleCloseDialog}
             color="inherit"
             size="large"
             sx={{
@@ -657,7 +698,7 @@ const CitizenCampusInfo = () => {
             variant="contained"
             onClick={handleSavePerson}
             size="large"
-            sx={{ 
+            sx={{
               ml: 1,
               px: 3.5,
               py: 1.25,
@@ -719,8 +760,8 @@ const CitizenCampusInfo = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button 
-            onClick={handleClosePetDialog} 
+          <Button
+            onClick={handleClosePetDialog}
             color="inherit"
             size="large"
             sx={{
@@ -737,7 +778,7 @@ const CitizenCampusInfo = () => {
             variant="contained"
             onClick={handleSavePet}
             size="large"
-            sx={{ 
+            sx={{
               ml: 1,
               px: 3.5,
               py: 1.25,
@@ -755,5 +796,3 @@ const CitizenCampusInfo = () => {
 };
 
 export default CitizenCampusInfo;
-
-
