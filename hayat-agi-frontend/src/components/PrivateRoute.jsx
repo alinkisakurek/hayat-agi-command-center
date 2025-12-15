@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../constants/routes';
-import { USER_ROLES } from '../constants/userRoles';
 
 /**
  * PrivateRoute Component
@@ -36,17 +36,9 @@ const PrivateRoute = ({
     const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
     if (!rolesArray.includes(user.role)) {
-      // Kullanıcının rolü izin verilenler listesinde yoksa
-      // Admin değilse vatandaş paneline, admin ise admin dashboard'a yönlendir
-      const isAdmin =
-        user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.ADMINISTRATOR;
-
-      return (
-        <Navigate
-          to={isAdmin ? ROUTES.DASHBOARD : '/panel'}
-          replace
-        />
-      );
+      // Kullanıcının rolü izin verilenler listesinde yoksa -> Dashboard'a at
+      // (Veya "403 Unauthorized" sayfasına)
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
