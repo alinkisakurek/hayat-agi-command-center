@@ -15,7 +15,6 @@ const registeredUserSchema = new Schema({
   tcNumber: {
     type: String,
     trim: true,
-    sparse: true,
   },
 
   gender: { type: String, enum: Object.keys(GENDER_LABELS), default: 'prefer_not_to_say' },
@@ -30,7 +29,7 @@ const registeredAnimalSchema = new Schema({
   name: { type: String, default: '', trim: true },
   species: { type: String, default: '', trim: true },
   breed: { type: String, default: '', trim: true },
-  microchipId: { type: String, trim: true, sparse: true, unique: true }
+  microchipId: { type: String, trim: true }
 })
 
 
@@ -42,6 +41,11 @@ const gatewaySchema = new Schema({
   },
   name: {
     type: String,
+    required: true
+  },
+  serialNumber: {
+    type: String,
+    unique: true,
     required: true
   },
   status: {
@@ -67,6 +71,7 @@ const gatewaySchema = new Schema({
 
   address: {
     type: addressSchema,
+    required: true,
     default: () => ({})
   },
 

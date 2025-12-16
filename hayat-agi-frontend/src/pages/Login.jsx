@@ -53,7 +53,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -65,10 +65,10 @@ const Login = () => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         console.log("Giriş Başarılı:", data.user);
-        
+
         // AuthContext'i güncelle
         refreshUser();
-        
+
         // Role'e göre yönlendirme
         if (data.user.role === 'admin' || data.user.role === 'administrator') {
           navigate(ROUTES.DASHBOARD);

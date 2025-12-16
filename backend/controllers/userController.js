@@ -1,4 +1,3 @@
-// User (Admin/Regional) session and role management (simple stub)
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
@@ -38,10 +37,10 @@ async function login(req, res, next) {
 // GET /api/users/me
 async function me(req, res) {
   const user = req.user;
-  res.json({ 
-    _id: user._id, 
-    name: user.name, 
-    email: user.email, 
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
     role: user.role,
     phoneNumber: user.phoneNumber,
     emergencyContactName: user.emergencyContactName,
@@ -76,7 +75,7 @@ async function updateProfile(req, res, next) {
     } = req.body;
 
     const updateData = {};
-    
+
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
     if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
     if (emergencyContactPhone !== undefined) updateData.emergencyContactPhone = emergencyContactPhone;

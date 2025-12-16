@@ -5,8 +5,8 @@ const { HEALTH_OPTIONS, GENDER_LABELS } = require('../utils/constants');
 const Schema = mongoose.Schema;
 
 const emergencyContactUserSchema = new Schema({
-  fullname: { type: String, default: '', required: true, trim: true },
-  phone: { type: String, default: '', required: true, trim: true },
+  fullname: { type: String, default: '', trim: true },
+  phone: { type: String, default: '', trim: true },
   relation: { type: String, default: '', trim: true }
 }, { _id: false });
 
@@ -57,19 +57,19 @@ const userSchema = new mongoose.Schema(
     },
 
     medicalConditions: {
-      type: String,
+      type: [String],
       enum: HEALTH_OPTIONS.chronicConditions,
       default: [],
     },
 
     prosthetics: {
-      type: String,
+      type: [String],
       enum: HEALTH_OPTIONS.prostheses,
       default: [],
     },
 
     medications: {
-      type: String,
+      type: [String],
       enum: HEALTH_OPTIONS.medications,
       default: [],
     },
