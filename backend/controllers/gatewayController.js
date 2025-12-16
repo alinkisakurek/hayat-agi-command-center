@@ -1,46 +1,28 @@
 const Gateway = require('../models/Gateway');
 const mongoose = require('mongoose');
+const { getCoordsFromAddress } = require('../utils/geocoder');
 
-// MongoDB bağlantısı olup olmadığını kontrol et
 const isMongoDBConnected = () => mongoose.connection.readyState === 1;
-
-// Mock data storage (MongoDB bağlantısı yoksa kullanılacak)
-let mockGateways = [
-  {
-    _id: 'm1',
-    name: 'Ön Kapı',
-    status: 'active',
-    battery: 85,
-    signal_quality: 'strong',
-    location: { lat: 41.0082, lng: 28.9784 },
-    connected_devices: 3,
-    uptime: 1200,
-    last_seen: new Date(),
-  },
-  {
-    _id: 'm2',
-    name: 'Arka Bahçe',
-    status: 'active',
-    battery: 60,
-    signal_quality: 'medium',
-    location: { lat: 41.0080, lng: 28.9785 },
-    connected_devices: 2,
-    uptime: 950,
-    last_seen: new Date(),
-  },
-];
-let nextId = 1000; // MongoDB ID'leri ile çakışmaması için yüksek başlangıç
 
 // Get All Gateways
 exports.getGateways = async (req, res) => {
   try {
     if (isMongoDBConnected()) {
-      // MongoDB bağlıysa sadece MongoDB'den çek
       const gateways = await Gateway.find().sort({ createdAt: -1 });
       res.status(200).json(gateways);
-    } else {
-      // MongoDB bağlı değilse mock data kullan
-      res.status(200).json(mockGateways);
+    }
+  } catch (error) {
+    console.error('Error fetching gateways:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get User's Gateways
+exports.getUserGateways = async (req, res) => {
+  try {
+    if (isMongoDBConnected()) {
+      const gateways = await Gateway.find({ owner: req.user._id }).sort({ createdAt: -1 });
+      res.status(200).json(gateways);
     }
   } catch (error) {
     console.error('Error fetching gateways:', error);
@@ -51,69 +33,177 @@ exports.getGateways = async (req, res) => {
 // Create New Gateway
 exports.createGateway = async (req, res) => {
   try {
-    const { name, serialNumber, location, address, status } = req.body;
+    const { name, serialNumber, address } = req.body;
 
-    if (!name || !location || !location.lat || !location.lng) {
-      return res.status(400).json({ message: 'Cihaz adı ve konum bilgileri zorunludur.' });
-    }
-
-    if (isMongoDBConnected()) {
-      // MongoDB bağlıysa gerçek veritabanına kaydet
-      const newGateway = new Gateway({
-        name,
-        serialNumber: serialNumber || undefined,
-        location,
-        address: address || {},
-        status: status || 'inactive',
-        battery: 0,
-        signal_quality: 'none',
-        connected_devices: 0,
-        uptime: 0,
-        last_seen: new Date(),
+    if (!name || !serialNumber || !address) {
+      return res.status(400).json({
+        message: 'Cihaz adı, seri numarası ve adres zorunludur.'
       });
-
-      await newGateway.save();
-      res.status(201).json({ message: 'Cihaz başarıyla kaydedildi.', gateway: newGateway });
-    } else {
-      // MongoDB bağlı değilse mock data kullan
-      const newGateway = {
-        _id: String(nextId++),
-        name,
-        serialNumber,
-        status: status || 'inactive',
-        battery: 0,
-        signal_quality: 'none',
-        location,
-        address: address || {},
-        connected_devices: 0,
-        uptime: 0,
-        last_seen: new Date(),
-      };
-      mockGateways.push(newGateway);
-      res.status(201).json({ message: 'Cihaz başarıyla kaydedildi (Mock).', gateway: newGateway });
     }
+
+    const coords = await getCoordsFromAddress(address);
+
+    if (!coords) {
+      return res.status(400).json({
+        message: 'Adres çözümlenemedi. Lütfen geçerli bir adres giriniz.'
+      });
+    }
+
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const newGateway = new Gateway({
+      owner: req.user._id,
+      name,
+      serialNumber,
+      address,
+      location: coords,
+      status: 'inactive',
+      battery: 100,
+      signal_quality: 'strong',
+      connected_devices: 0,
+      uptime: 0,
+      last_seen: new Date(),
+    });
+
+    await newGateway.save();
+
+    res.status(201).json({
+      message: 'Cihaz başarıyla kaydedildi.',
+      gateway: newGateway
+    });
+
   } catch (error) {
     console.error('Error creating gateway:', error);
-    if (error.code === 11000) { // Duplicate key error for unique serialNumber
-      return res.status(400).json({ message: 'Bu seri numarasına sahip bir cihaz zaten mevcut.' });
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Bu seri numarasına sahip bir cihaz zaten mevcut.'
+      });
     }
-    res.status(400).json({ message: error.message });
+
+    res.status(500).json({ message: 'Sunucu hatası' });
   }
 };
+
 
 // Delete Gateway
 exports.deleteGateway = async (req, res) => {
   try {
-    if (isMongoDBConnected()) {
-      const gateway = await Gateway.findByIdAndDelete(req.params.id);
-      if (!gateway) {
-        return res.status(404).json({ message: 'Gateway bulunamadı.' });
-      }
-      res.json({ message: 'Gateway silindi' });
-    } else {
-      mockGateways = mockGateways.filter(gw => gw._id !== req.params.id);
-      res.json({ message: 'Gateway silindi' });
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
     }
+    const gateway = await Gateway.findOneAndDelete({
+      _id: req.params.id,
+      owner: req.user._id
+    });
+
+    if (!gateway) {
+      return res.status(404).json({
+        message: 'Gateway bulunamadı veya silme yetkiniz yok.'
+      });
+    }
+
+    res.json({ message: 'Gateway silindi.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.addPersonToGateway = async (req, res) => {
+  try {
+    const { id } = req.params; // Gateway ID'si URL'den gelir
+    const personData = req.body; // Formdan gelen kişi bilgileri
+
+    // 1. Gateway'i bul (Sadece kendi cihazına ekleyebilsin diye owner kontrolü şart)
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
+    }
+
+    // 2. Kişiyi diziye ekle
+    // Not: Mongoose, şemadaki validasyonları (TC, isim zorunluluğu vb.) burada kontrol eder.
+    gateway.registered_users.push(personData);
+
+    // 3. Kaydet
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Kişi başarıyla eklendi.',
+      updatedGateway: gateway
+    });
+
+  } catch (error) {
+    res.status(400).json({ message: 'Kişi eklenemedi.', error: error.message });
+  }
+};
+
+// 2. Gateway'den Kişi Sil
+exports.removePersonFromGateway = async (req, res) => {
+  try {
+    const { gatewayId, personId } = req.params;
+
+    const gateway = await Gateway.findOne({ _id: gatewayId, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı.' });
+    }
+
+    // Subdocument'i silme yöntemi
+    gateway.registered_users.pull({ _id: personId });
+
+    await gateway.save();
+
+    res.status(200).json({ message: 'Kişi silindi.', updatedGateway: gateway });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 3. Gateway'e Evcil Hayvan Ekle
+exports.addPetToGateway = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const petData = req.body;
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı.' });
+    }
+
+    gateway.registered_animals.push(petData);
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Evcil hayvan eklendi.',
+      updatedGateway: gateway
+    });
+
+  } catch (error) {
+    res.status(400).json({ message: 'Evcil hayvan eklenemedi.', error: error.message });
+  }
+};
+
+// 4. Gateway'den Evcil Hayvan Sil
+exports.removePetFromGateway = async (req, res) => {
+  try {
+    const { gatewayId, petId } = req.params;
+
+    const gateway = await Gateway.findOne({ _id: gatewayId, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı.' });
+    }
+
+    gateway.registered_animals.pull({ _id: petId });
+    await gateway.save();
+
+    res.status(200).json({ message: 'Evcil hayvan silindi.', updatedGateway: gateway });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

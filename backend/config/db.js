@@ -7,11 +7,9 @@ const connectDB = async () => {
     }
 
     try {
-        await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-        console.log('MongoDB connected successfully');
+        const conn = await mongoose.connect(process.env.MONGO_URI);
+
+        console.log(`MongoDB Bağlandı: ${conn.connection.host}`);
     } catch (error) {
         console.error('MongoDB connection error:', error.message);
         // In development we don't exit the process; let app run even without DB.

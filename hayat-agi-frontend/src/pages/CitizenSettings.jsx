@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -25,7 +25,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import 'dayjs/locale/tr';
 import { updateProfile, getProfile } from '../services/authService';
-import { diseases, medications, prosthetics, getAllMedications } from '../data/healthData';
+import { getSystemOptions } from '../services/metadataService';
 
 const CitizenSettings = () => {
   const [formData, setFormData] = useState({
@@ -40,7 +40,7 @@ const CitizenSettings = () => {
     gender: '',
     medications: []
   });
-  
+
   // Autocomplete için seçili değerler
   const [selectedDiseases, setSelectedDiseases] = useState([]);
   const [selectedMedications, setSelectedMedications] = useState([]);
@@ -51,60 +51,97 @@ const CitizenSettings = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [loading, setLoading] = useState(false);
 
-  // Sayfa yüklendiğinde mevcut profil bilgilerini getir
+  // Backend metadata (health options & gender labels)
+  const [metadata, setMetadata] = useState({
+    bloodGroups: [],
+    chronicConditions: [],
+    medications: [],
+    prostheses: [],
+    genders: {}
+  });
+  const [loadingMetadata, setLoadingMetadata] = useState(true);
+
+  const diseaseOptions = useMemo(() => (metadata.chronicConditions || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.chronicConditions]);
+  const medicationOptions = useMemo(() => (metadata.medications || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.medications]);
+  const prostheticOptions = useMemo(() => (metadata.prostheses || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.prostheses]);
+  const genderEntries = useMemo(() => Object.entries(metadata.genders || {}), [metadata.genders]);
+
+  // Sayfa yüklendiğinde önce metadata'yı, sonra profil verisini getir
   useEffect(() => {
+    const loadMetadata = async () => {
+      try {
+        const data = await getSystemOptions();
+        const ho = data.healthOptions || data.HEALTH_OPTIONS || {};
+        const gl = data.genderLabels || data.GENDER_LABELS || {};
+        setMetadata({
+          bloodGroups: ho.bloodGroups || [],
+          chronicConditions: ho.chronicConditions || [],
+          medications: ho.medications || [],
+          prostheses: ho.prostheses || [],
+          genders: gl || {}
+        });
+      } catch (error) {
+        console.error('Metadata yüklenemedi:', error);
+      } finally {
+        setLoadingMetadata(false);
+      }
+    };
+    loadMetadata();
+  }, []);
+
+  useEffect(() => {
+    if (loadingMetadata) return; // wait metadata to be ready
     const fetchProfile = async () => {
       try {
         const profile = await getProfile();
         // me endpoint'i direkt user objesi döndürüyor
         const userData = profile.user || profile;
-        
+
         // String'leri array'e çevir
-        const medicalConditionsArray = userData.medicalConditions 
-          ? (Array.isArray(userData.medicalConditions) 
-              ? userData.medicalConditions 
-              : userData.medicalConditions.split(',').map(s => s.trim()).filter(Boolean))
+        const medicalConditionsArray = userData.medicalConditions
+          ? (Array.isArray(userData.medicalConditions)
+            ? userData.medicalConditions
+            : userData.medicalConditions.split(',').map(s => s.trim()).filter(Boolean))
           : [];
-        
-        const medicationsArray = userData.medications 
-          ? (Array.isArray(userData.medications) 
-              ? userData.medications 
-              : userData.medications.split(',').map(s => s.trim()).filter(Boolean))
+
+        const medicationsArray = userData.medications
+          ? (Array.isArray(userData.medications)
+            ? userData.medications
+            : userData.medications.split(',').map(s => s.trim()).filter(Boolean))
           : [];
-        
-        const prostheticsArray = userData.prosthetics 
-          ? (Array.isArray(userData.prosthetics) 
-              ? userData.prosthetics 
-              : (typeof userData.prosthetics === 'string' 
-                  ? userData.prosthetics.split(',').map(s => s.trim()).filter(Boolean)
-                  : []))
+
+        const prostheticsArray = userData.prosthetics
+          ? (Array.isArray(userData.prosthetics)
+            ? userData.prosthetics
+            : (typeof userData.prosthetics === 'string'
+              ? userData.prosthetics.split(',').map(s => s.trim()).filter(Boolean)
+              : []))
           : [];
-        
+
         // Rahatsızlıkları disease objelerine eşleştir
-        const matchedDiseases = medicalConditionsArray.map(name => 
-          diseases.find(d => d.name === name) || { id: name, name, category: 'Diğer' }
+        const matchedDiseases = medicalConditionsArray.map(name =>
+          diseaseOptions.find(d => d.name === name) || { id: name, name, category: 'Diğer' }
         );
-        
+
         // İlaçları medication objelerine eşleştir
-        const allMeds = getAllMedications();
-        const matchedMedications = medicationsArray.map(name => 
-          allMeds.find(m => m.name === name) || { id: name, name, category: 'Diğer' }
+        const matchedMedications = medicationsArray.map(name =>
+          medicationOptions.find(m => m.name === name) || { id: name, name, category: 'Diğer' }
         );
-        
+
         // Protezleri prosthetics objelerine eşleştir
-        const matchedProsthetics = prostheticsArray.map(name => 
-          prosthetics.find(p => p.name === name) || { id: name, name, category: 'Diğer' }
+        const matchedProsthetics = prostheticsArray.map(name =>
+          prostheticOptions.find(p => p.name === name) || { id: name, name, category: 'Diğer' }
         );
-        
+
         setSelectedDiseases(matchedDiseases);
         setSelectedMedications(matchedMedications);
         setSelectedProsthetics(matchedProsthetics);
-        
+
         setFormData({
           phoneNumber: userData.phoneNumber || '',
-          emergencyContactName: userData.emergencyContactName || '',
-          emergencyContactPhone: userData.emergencyContactPhone || '',
-          emergencyContactRelation: userData.emergencyContactRelation || '',
+          emergencyContactName: userData.emergencyContact?.fullname || '',
+          emergencyContactPhone: userData.emergencyContact?.phone || '',
+          emergencyContactRelation: userData.emergencyContact?.relation || '',
           bloodType: userData.bloodType || '',
           medicalConditions: medicalConditionsArray,
           prosthetics: prostheticsArray,
@@ -118,7 +155,7 @@ const CitizenSettings = () => {
       }
     };
     fetchProfile();
-  }, []);
+  }, [loadingMetadata]);
 
   const handleChange = (field) => (event) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
@@ -127,7 +164,7 @@ const CitizenSettings = () => {
       [field]: value
     }));
   };
-  
+
   const handleDiseasesChange = (event, newValue) => {
     setSelectedDiseases(newValue);
     setFormData((prev) => ({
@@ -135,7 +172,7 @@ const CitizenSettings = () => {
       medicalConditions: newValue.map(d => d.name)
     }));
   };
-  
+
   const handleMedicationsChange = (event, newValue) => {
     setSelectedMedications(newValue);
     setFormData((prev) => ({
@@ -143,7 +180,7 @@ const CitizenSettings = () => {
       medications: newValue.map(m => m.name)
     }));
   };
-  
+
   const handleProstheticsChange = (event, newValue) => {
     setSelectedProsthetics(newValue);
     setFormData((prev) => ({
@@ -156,21 +193,80 @@ const CitizenSettings = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
-    
+
     try {
       // FormData'yı backend formatına çevir
+      // Build payload: send arrays (not joined strings) and use null for unset selects
       const submitData = {
-        ...formData,
+        phoneNumber: formData.phoneNumber || null,
+        emergencyContact: {
+          fullname: formData.emergencyContactName || undefined,
+          phone: formData.emergencyContactPhone || undefined,
+          relation: formData.emergencyContactRelation || undefined
+        },
         birthDate: formData.birthDate ? formData.birthDate.toISOString().split('T')[0] : null,
-        medicalConditions: formData.medicalConditions.join(', '),
-        medications: formData.medications.join(', '),
-        prosthetics: formData.prosthetics.join(', '),
-        hasProsthesis: formData.prosthetics.length > 0
+        bloodType: formData.bloodType || null,
+        gender: formData.gender || null,
+        medicalConditions: Array.isArray(formData.medicalConditions) ? formData.medicalConditions.filter(Boolean) : [],
+        medications: Array.isArray(formData.medications) ? formData.medications.filter(Boolean) : [],
+        prosthetics: Array.isArray(formData.prosthetics) ? formData.prosthetics.filter(Boolean) : [],
+        hasProsthesis: (formData.prosthetics || []).length > 0
       };
-      
+
       const response = await updateProfile(submitData);
       // updateProfile response'unda user objesi var
       const userData = response.user || response;
+
+      // Update local UI state with saved data (mirror fetchProfile mapping)
+      const medicalConditionsArray = userData.medicalConditions
+        ? (Array.isArray(userData.medicalConditions)
+          ? userData.medicalConditions
+          : userData.medicalConditions.split(',').map(s => s.trim()).filter(Boolean))
+        : [];
+
+      const medicationsArray = userData.medications
+        ? (Array.isArray(userData.medications)
+          ? userData.medications
+          : userData.medications.split(',').map(s => s.trim()).filter(Boolean))
+        : [];
+
+      const prostheticsArray = userData.prosthetics
+        ? (Array.isArray(userData.prosthetics)
+          ? userData.prosthetics
+          : (typeof userData.prosthetics === 'string'
+            ? userData.prosthetics.split(',').map(s => s.trim()).filter(Boolean)
+            : []))
+        : [];
+
+      const matchedDiseases = medicalConditionsArray.map(name =>
+        diseaseOptions.find(d => d.name === name) || { id: name, name, category: 'Diğer' }
+      );
+
+      const matchedMedications = medicationsArray.map(name =>
+        medicationOptions.find(m => m.name === name) || { id: name, name, category: 'Diğer' }
+      );
+
+      const matchedProsthetics = prostheticsArray.map(name =>
+        prostheticOptions.find(p => p.name === name) || { id: name, name, category: 'Diğer' }
+      );
+
+      setSelectedDiseases(matchedDiseases);
+      setSelectedMedications(matchedMedications);
+      setSelectedProsthetics(matchedProsthetics);
+
+      setFormData({
+        phoneNumber: userData.phoneNumber || '',
+        emergencyContactName: userData.emergencyContact?.fullname || '',
+        emergencyContactPhone: userData.emergencyContact?.phone || '',
+        emergencyContactRelation: userData.emergencyContact?.relation || '',
+        bloodType: userData.bloodType || '',
+        medicalConditions: medicalConditionsArray,
+        prosthetics: prostheticsArray,
+        birthDate: userData.birthDate ? dayjs(userData.birthDate) : null,
+        gender: userData.gender || '',
+        medications: medicationsArray
+      });
+
       setSavedData(userData);
       setSnackbarMessage(response.message || 'Profil ayarlarınız başarıyla kaydedildi.');
       setSnackbarSeverity('success');
@@ -273,14 +369,11 @@ const CitizenSettings = () => {
                   label="Kan Grubu"
                 >
                   <MenuItem value="">Seçiniz</MenuItem>
-                  <MenuItem value="A+">A+</MenuItem>
-                  <MenuItem value="A-">A-</MenuItem>
-                  <MenuItem value="B+">B+</MenuItem>
-                  <MenuItem value="B-">B-</MenuItem>
-                  <MenuItem value="AB+">AB+</MenuItem>
-                  <MenuItem value="AB-">AB-</MenuItem>
-                  <MenuItem value="0+">0+</MenuItem>
-                  <MenuItem value="0-">0-</MenuItem>
+                  {(metadata.bloodGroups || []).map((group) => (
+                    <MenuItem key={group} value={group}>
+                      {group}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
 
@@ -313,15 +406,15 @@ const CitizenSettings = () => {
                   label="Cinsiyet"
                 >
                   <MenuItem value="">Seçiniz</MenuItem>
-                  <MenuItem value="female">Kadın</MenuItem>
-                  <MenuItem value="male">Erkek</MenuItem>
-                  <MenuItem value="prefer_not_to_say">Belirtmek istemiyorum</MenuItem>
+                  {genderEntries.map(([key, label]) => (
+                    <MenuItem key={key} value={key}>{label}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
 
               <Autocomplete
                 multiple
-                options={diseases}
+                options={diseaseOptions}
                 getOptionLabel={(option) => option.name}
                 value={selectedDiseases}
                 onChange={handleDiseasesChange}
@@ -373,7 +466,7 @@ const CitizenSettings = () => {
 
               <Autocomplete
                 multiple
-                options={getAllMedications()}
+                options={medicationOptions}
                 getOptionLabel={(option) => option.name}
                 value={selectedMedications}
                 onChange={handleMedicationsChange}
@@ -425,7 +518,7 @@ const CitizenSettings = () => {
 
               <Autocomplete
                 multiple
-                options={prosthetics}
+                options={prostheticOptions}
                 getOptionLabel={(option) => option.name}
                 value={selectedProsthetics}
                 onChange={handleProstheticsChange}
@@ -477,9 +570,9 @@ const CitizenSettings = () => {
             </Stack>
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
-              <Button 
-                type="submit" 
-                variant="contained" 
+              <Button
+                type="submit"
+                variant="contained"
                 size="large"
                 disabled={loading}
               >
@@ -519,15 +612,15 @@ const CitizenSettings = () => {
                     Acil Durum Kişisi
                   </Typography>
                   <Typography variant="body1" fontWeight="bold">
-                    {savedData.emergencyContactName || 'Belirtilmemiş'}
+                    {savedData.emergencyContact?.fullname || 'Belirtilmemiş'}
                   </Typography>
-                  {savedData.emergencyContactRelation && (
+                  {savedData.emergencyContact?.relation && (
                     <Typography variant="body2" color="text.secondary">
-                      Yakınlık: {savedData.emergencyContactRelation}
+                      Yakınlık: {savedData.emergencyContact?.relation}
                     </Typography>
                   )}
                   <Typography variant="body2" color="text.secondary">
-                    Telefon: {savedData.emergencyContactPhone || 'Belirtilmemiş'}
+                    Telefon: {savedData.emergencyContact?.phone || 'Belirtilmemiş'}
                   </Typography>
                 </Box>
                 {(savedData.bloodType || savedData.gender || savedData.birthDate) && (
@@ -544,11 +637,7 @@ const CitizenSettings = () => {
                       )}
                       {savedData.gender && (
                         <Typography variant="body2">
-                          Cinsiyet: <strong>
-                            {savedData.gender === 'male' ? 'Erkek' : 
-                             savedData.gender === 'female' ? 'Kadın' : 
-                             savedData.gender === 'prefer_not_to_say' ? 'Belirtmek istemiyorum' : ''}
-                          </strong>
+                          Cinsiyet: <strong>{metadata.genders?.[savedData.gender] || (savedData.gender === 'male' ? 'Erkek' : savedData.gender === 'female' ? 'Kadın' : savedData.gender === 'prefer_not_to_say' ? 'Belirtmek istemiyorum' : '')}</strong>
                         </Typography>
                       )}
                       {savedData.birthDate && (
@@ -561,8 +650,8 @@ const CitizenSettings = () => {
                       {savedData.medicalConditions && (
                         <Typography variant="body2" sx={{ mt: 1 }}>
                           Rahatsızlıklar: <strong>
-                            {typeof savedData.medicalConditions === 'string' 
-                              ? savedData.medicalConditions 
+                            {typeof savedData.medicalConditions === 'string'
+                              ? savedData.medicalConditions
                               : savedData.medicalConditions.join(', ')}
                           </strong>
                         </Typography>
@@ -570,8 +659,8 @@ const CitizenSettings = () => {
                       {savedData.medications && (
                         <Typography variant="body2" sx={{ mt: 1 }}>
                           İlaçlar: <strong>
-                            {typeof savedData.medications === 'string' 
-                              ? savedData.medications 
+                            {typeof savedData.medications === 'string'
+                              ? savedData.medications
                               : savedData.medications.join(', ')}
                           </strong>
                         </Typography>
@@ -579,8 +668,8 @@ const CitizenSettings = () => {
                       {savedData.prosthetics && (
                         <Typography variant="body2" sx={{ mt: 1 }}>
                           Protez/Cihaz: <strong>
-                            {typeof savedData.prosthetics === 'string' 
-                              ? savedData.prosthetics 
+                            {typeof savedData.prosthetics === 'string'
+                              ? savedData.prosthetics
                               : savedData.prosthetics.join(', ')}
                           </strong>
                         </Typography>
