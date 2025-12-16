@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -23,7 +23,9 @@ import {
   Divider,
   Avatar,
   IconButton,
-  Autocomplete
+  Autocomplete,
+  LinearProgress,
+  CircularProgress
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -34,7 +36,15 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PetsIcon from '@mui/icons-material/Pets';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import RouterIcon from '@mui/icons-material/Router';
+import BatteryStdIcon from '@mui/icons-material/BatteryStd';
+import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
+import SmartphoneIcon from '@mui/icons-material/Smartphone';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
+import DevicesIcon from '@mui/icons-material/Devices';
 import { diseases, medications, prosthetics, getAllMedications } from '../data/healthData';
+import { getGateways } from '../api/gatewayService';
 
 const BLOOD_GROUPS = [
   'A Rh(+)', 'A Rh(-)',
@@ -53,6 +63,7 @@ const CitizenCampusInfo = () => {
   const [form, setForm] = useState({
     name: '',
     gender: '',
+    tcKimlikNo: '',
     birthDate: null,
     bloodGroup: '',
     conditions: '',
@@ -62,18 +73,95 @@ const CitizenCampusInfo = () => {
   const [petForm, setPetForm] = useState({
     name: '',
     animalType: '',
-    breed: ''
+    breed: '',
+    microchipNumber: ''
   });
+  const [petTouched, setPetTouched] = useState({});
   const [touched, setTouched] = useState({});
   const [selectedDiseases, setSelectedDiseases] = useState([]);
   const [selectedMedications, setSelectedMedications] = useState([]);
   const [selectedProsthetics, setSelectedProsthetics] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [isDeviceDialogOpen, setIsDeviceDialogOpen] = useState(false);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+
+  // Cihazları yükle
+  useEffect(() => {
+    const loadDevices = async () => {
+      setLoadingDevices(true);
+      try {
+        const data = await getGateways();
+        setDevices(data);
+      } catch (error) {
+        console.error('Cihazlar yüklenirken hata:', error);
+      } finally {
+        setLoadingDevices(false);
+      }
+    };
+    loadDevices();
+  }, []);
+
+  const getBatteryColor = (level) => {
+    if (level > 50) return "success";
+    if (level > 20) return "warning";
+    return "error";
+  };
+
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return 'Bilinmiyor';
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Az önce';
+    if (diffMins < 60) return `${diffMins} dakika önce`;
+    if (diffHours < 24) return `${diffHours} saat önce`;
+    return `${diffDays} gün önce`;
+  };
+
+  const handleOpenDeviceDialog = () => {
+    setIsDeviceDialogOpen(true);
+  };
+
+  const handleCloseDeviceDialog = () => {
+    setIsDeviceDialogOpen(false);
+  };
+
+  const handleSelectDevice = (device) => {
+    setSelectedDevice(device);
+    setIsDeviceDialogOpen(false);
+  };
+
+  // Seçili cihaza ait kişileri filtrele
+  const filteredPeople = useMemo(() => {
+    if (!selectedDevice) return [];
+    const deviceId = selectedDevice._id || selectedDevice.id;
+    return people.filter(person => {
+      const personDeviceId = person.deviceId;
+      return personDeviceId === deviceId;
+    });
+  }, [people, selectedDevice]);
+
+  // Seçili cihaza ait evcil hayvanları filtrele
+  const filteredPets = useMemo(() => {
+    if (!selectedDevice) return [];
+    const deviceId = selectedDevice._id || selectedDevice.id;
+    return pets.filter(pet => {
+      const petDeviceId = pet.deviceId;
+      return petDeviceId === deviceId;
+    });
+  }, [pets, selectedDevice]);
 
   const handleOpenDialog = () => {
     setEditingPersonId(null);
     setForm({
       name: '',
       gender: '',
+      tcKimlikNo: '',
       birthDate: null,
       bloodGroup: '',
       conditions: '',
@@ -93,6 +181,7 @@ const CitizenCampusInfo = () => {
     setForm({
       name: '',
       gender: '',
+      tcKimlikNo: '',
       birthDate: null,
       bloodGroup: '',
       conditions: '',
@@ -110,8 +199,10 @@ const CitizenCampusInfo = () => {
     setPetForm({
       name: '',
       animalType: '',
-      breed: ''
+      breed: '',
+      microchipNumber: ''
     });
+    setPetTouched({});
     setIsPetDialogOpen(true);
   };
 
@@ -121,14 +212,23 @@ const CitizenCampusInfo = () => {
     setPetForm({
       name: '',
       animalType: '',
-      breed: ''
+      breed: '',
+      microchipNumber: ''
     });
+    setPetTouched({});
   };
 
   const handleChange = (field) => (event) => {
+    let value = event.target.value;
+    
+    // TC kimlik numarası için sadece rakam kabul et ve maksimum 11 karakter
+    if (field === 'tcKimlikNo') {
+      value = value.replace(/\D/g, '').slice(0, 11);
+    }
+    
     setForm((prev) => ({
       ...prev,
-      [field]: event.target.value
+      [field]: value
     }));
   };
 
@@ -150,17 +250,48 @@ const CitizenCampusInfo = () => {
     return touched[field] && !form[field];
   };
 
+  const isTcKimlikNoValid = (tcKimlikNo) => {
+    if (!tcKimlikNo) return true; // Opsiyonel alan
+    return /^\d{11}$/.test(tcKimlikNo);
+  };
+
+  const isTcKimlikNoUnique = (tcKimlikNo, editingPersonId) => {
+    if (!tcKimlikNo) return true; // Opsiyonel alan
+    try {
+      if (!people || !Array.isArray(people)) return true;
+      const deviceId = selectedDevice?._id || selectedDevice?.id;
+      if (!deviceId) return true; // Cihaz seçilmemişse benzersiz kabul et
+      
+      const existingPerson = people.find(p => {
+        try {
+          return p && 
+                 p.tcKimlikNo === tcKimlikNo && 
+                 p.id !== editingPersonId &&
+                 (p.deviceId === deviceId);
+        } catch (err) {
+          return false;
+        }
+      });
+      return !existingPerson;
+    } catch (error) {
+      console.error('Error checking TC kimlik uniqueness:', error);
+      return true; // Hata durumunda benzersiz kabul et
+    }
+  };
+
   const isFormValid =
     form.name &&
     form.gender &&
     form.birthDate &&
-    form.bloodGroup;
+    form.bloodGroup &&
+    (!form.tcKimlikNo || (isTcKimlikNoValid(form.tcKimlikNo) && isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId)));
 
   const handleSavePerson = () => {
     if (!isFormValid) {
       setTouched({
         name: true,
         gender: true,
+        tcKimlikNo: true,
         birthDate: true,
         bloodGroup: true
       });
@@ -179,12 +310,21 @@ const CitizenCampusInfo = () => {
       ? selectedProsthetics.map((p) => p.name).join(', ')
       : form.prosthetics || '';
 
+    const currentDeviceId = selectedDevice?._id || selectedDevice?.id || null;
+    const currentDeviceName = selectedDevice?.name || null;
+
     const personData = {
       ...form,
       conditions: conditionsString,
       medications: medicationsString,
       prosthetics: prostheticsString,
-      birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : ''
+      birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : '',
+      deviceId: editingPersonId 
+        ? (people.find(p => p.id === editingPersonId)?.deviceId || currentDeviceId)
+        : currentDeviceId,
+      deviceName: editingPersonId
+        ? (people.find(p => p.id === editingPersonId)?.deviceName || currentDeviceName)
+        : currentDeviceName
     };
 
     if (editingPersonId) {
@@ -208,28 +348,136 @@ const CitizenCampusInfo = () => {
     handleCloseDialog();
   };
 
-  const isPetFormValid =
-    petForm.name &&
-    petForm.animalType &&
-    petForm.breed;
+  const isPetFormValid = useMemo(() => {
+    try {
+      const basicFieldsValid = petForm.name && petForm.animalType && petForm.breed;
+      if (!basicFieldsValid) return false;
+      
+      // Mikro çip numarası opsiyonel, eğer girilmişse geçerli ve benzersiz olmalı
+      if (petForm.microchipNumber) {
+        const isValid = isMicrochipNumberValid(petForm.microchipNumber);
+        const isUnique = isMicrochipNumberUnique(petForm.microchipNumber, editingPetId);
+        return isValid && isUnique;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in isPetFormValid:', error);
+      // Hata durumunda sadece temel alanları kontrol et
+      return petForm.name && petForm.animalType && petForm.breed;
+    }
+  }, [petForm.name, petForm.animalType, petForm.breed, petForm.microchipNumber, editingPetId, pets, selectedDevice]);
 
   const handleChangePet = (field) => (event) => {
-    setPetForm((prev) => ({
-      ...prev,
-      [field]: event.target.value
-    }));
+    try {
+      event.stopPropagation();
+      let value = event.target.value;
+      
+      // Mikro çip numarası için sadece rakam kabul et ve maksimum 15 karakter
+      if (field === 'microchipNumber') {
+        value = value.replace(/\D/g, '').slice(0, 15);
+      }
+      
+      setPetForm((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    } catch (error) {
+      console.error('Error in handleChangePet:', error);
+    }
   };
+
+  const handleBlurPet = (field) => () => {
+    setPetTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const isMicrochipNumberValid = (microchipNumber) => {
+    if (!microchipNumber) return true; // Opsiyonel alan
+    return /^\d{15}$/.test(microchipNumber);
+  };
+
+  const isMicrochipNumberUnique = (microchipNumber, editingPetId) => {
+    if (!microchipNumber) return true; // Opsiyonel alan
+    try {
+      if (!pets || !Array.isArray(pets)) return true;
+      const deviceId = selectedDevice?._id || selectedDevice?.id;
+      if (!deviceId) return true; // Cihaz seçilmemişse benzersiz kabul et
+      
+      const existingPet = pets.find(p => {
+        try {
+          return p && 
+                 p.microchipNumber === microchipNumber && 
+                 p.id !== editingPetId &&
+                 (p.deviceId === deviceId);
+        } catch (err) {
+          return false;
+        }
+      });
+      return !existingPet;
+    } catch (error) {
+      console.error('Error checking microchip uniqueness:', error);
+      return true; // Hata durumunda benzersiz kabul et
+    }
+  };
+
+  const isMicrochipNumberError = useMemo(() => {
+    try {
+      if (!petTouched.microchipNumber) return false;
+      if (!petForm.microchipNumber) return false; // Opsiyonel alan
+      return !isMicrochipNumberValid(petForm.microchipNumber) || !isMicrochipNumberUnique(petForm.microchipNumber, editingPetId);
+    } catch (error) {
+      console.error('Error checking microchip error:', error);
+      return false;
+    }
+  }, [petTouched.microchipNumber, petForm.microchipNumber, editingPetId, pets, selectedDevice]);
+
+  const getMicrochipHelperText = useMemo(() => {
+    try {
+      if (!petTouched.microchipNumber || !petForm.microchipNumber) {
+        return '15 haneli benzersiz mikro çip numarası (opsiyonel)';
+      }
+      if (!isMicrochipNumberValid(petForm.microchipNumber)) {
+        return 'Mikro çip numarası tam olarak 15 haneli rakamlardan oluşmalıdır.';
+      }
+      if (!isMicrochipNumberUnique(petForm.microchipNumber, editingPetId)) {
+        return 'Bu mikro çip numarası zaten kullanılıyor. Lütfen farklı bir numara girin.';
+      }
+      return '15 haneli benzersiz mikro çip numarası (opsiyonel)';
+    } catch (error) {
+      console.error('Error getting helper text:', error);
+      return '15 haneli benzersiz mikro çip numarası (opsiyonel)';
+    }
+  }, [petTouched.microchipNumber, petForm.microchipNumber, editingPetId, pets, selectedDevice]);
 
   const handleSavePet = () => {
     if (!isPetFormValid) {
+      setPetTouched({
+        name: true,
+        animalType: true,
+        breed: true,
+        microchipNumber: true
+      });
       return;
     }
+
+    const currentDeviceId = selectedDevice?._id || selectedDevice?.id || null;
+    const currentDeviceName = selectedDevice?.name || null;
+
+    const petData = {
+      ...petForm,
+      deviceId: editingPetId
+        ? (pets.find(p => p.id === editingPetId)?.deviceId || currentDeviceId)
+        : currentDeviceId,
+      deviceName: editingPetId
+        ? (pets.find(p => p.id === editingPetId)?.deviceName || currentDeviceName)
+        : currentDeviceName
+    };
 
     if (editingPetId) {
       setPets((prev) =>
         prev.map((pet) =>
           pet.id === editingPetId
-            ? { ...pet, ...petForm }
+            ? { ...pet, ...petData }
             : pet
         )
       );
@@ -238,7 +486,7 @@ const CitizenCampusInfo = () => {
         ...prev,
         {
           id: Date.now(),
-          ...petForm
+          ...petData
         }
       ]);
     }
@@ -279,23 +527,201 @@ const CitizenCampusInfo = () => {
         </Typography>
       </Paper>
 
+      {/* Cihaz Seçimi Bölümü */}
+      <Box sx={{ mb: 4 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            background: selectedDevice ? 'linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%)' : 'linear-gradient(135deg, #fff3e0 0%, #ffffff 100%)'
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ flex: 1, minWidth: { xs: '100%', md: 'auto' } }}>
+              <Typography variant="h5" fontWeight="700" sx={{ mb: 2, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
+                Cihaz Seçimi
+              </Typography>
+              {selectedDevice ? (
+                <Card
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3,
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                    border: selectedDevice.status === 'low_battery' ? '2px solid #d32f2f' : '1px solid rgba(0,0,0,0.08)',
+                    position: 'relative',
+                    overflow: 'visible'
+                  }}
+                >
+                  <Chip
+                    label={selectedDevice.status === 'active' ? 'Aktif & Hazır' : selectedDevice.status === 'low_battery' ? 'Pil Düşük!' : 'Pasif'}
+                    color={selectedDevice.status === 'active' ? 'success' : 'error'}
+                    icon={selectedDevice.status === 'active' ? <CheckCircleIcon /> : <WarningIcon />}
+                    sx={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      fontWeight: '700',
+                      fontSize: '0.75rem',
+                      height: 28,
+                      px: 1,
+                      zIndex: 1
+                    }}
+                  />
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                      <Avatar
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          bgcolor: 'primary.light',
+                          color: 'primary.main'
+                        }}
+                      >
+                        <RouterIcon sx={{ fontSize: 24 }} />
+                      </Avatar>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" fontWeight="800" sx={{ mb: 0.5, fontSize: { xs: '1rem', md: '1.125rem' } }}>
+                          {selectedDevice.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                          Son görülme: {formatLastSeen(selectedDevice.last_seen)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Divider sx={{ mb: 2, borderWidth: 1 }} />
+
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={6}>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            bgcolor: 'background.default',
+                            borderRadius: 2,
+                            border: '1px solid rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.75 }}>
+                            <BatteryStdIcon color={getBatteryColor(selectedDevice.battery || 0)} sx={{ fontSize: 18 }} />
+                            <Typography variant="caption" fontWeight="700" sx={{ fontSize: '0.75rem' }}>
+                              Batarya
+                            </Typography>
+                          </Stack>
+                          <LinearProgress
+                            variant="determinate"
+                            value={selectedDevice.battery || 0}
+                            color={getBatteryColor(selectedDevice.battery || 0)}
+                            sx={{ height: 6, borderRadius: 3, mb: 0.75 }}
+                          />
+                          <Typography variant="body2" sx={{ textAlign: 'right', fontWeight: '800', fontSize: '0.95rem' }}>
+                            %{selectedDevice.battery || 0}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={6}>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            bgcolor: 'background.default',
+                            borderRadius: 2,
+                            border: '1px solid rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.75 }}>
+                            <SmartphoneIcon color="primary" sx={{ fontSize: 18 }} />
+                            <Typography variant="caption" fontWeight="700" sx={{ fontSize: '0.75rem' }}>
+                              Bağlı Cihaz
+                            </Typography>
+                          </Stack>
+                          <Typography variant="h6" fontWeight="800" color="primary.main" sx={{ mb: 0.25, fontSize: '1.25rem' }}>
+                            {selectedDevice.connected_devices || 0}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                            Telefon mesh ağına bağlı
+                          </Typography>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            bgcolor: 'background.default',
+                            borderRadius: 2,
+                            border: '1px solid rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <SignalCellularAltIcon 
+                              color={selectedDevice.signal_quality === 'strong' ? 'success' : selectedDevice.signal_quality === 'medium' ? 'warning' : 'error'} 
+                              sx={{ fontSize: 20 }}
+                            />
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', mb: 0.25, display: 'block' }}>
+                                Mesh Bağlantı Kalitesi
+                              </Typography>
+                              <Typography variant="body2" fontWeight="700" sx={{ fontSize: '0.85rem' }}>
+                                {selectedDevice.signal_quality === 'strong' ? 'Mükemmel' : selectedDevice.signal_quality === 'medium' ? 'Orta Seviye' : 'Zayıf'}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9rem' }}>
+                  Kişi ve evcil hayvan eklemek için önce bir cihaz seçmelisiniz.
+                </Typography>
+              )}
+            </Box>
+            <Button 
+              variant="contained" 
+              size="large"
+              startIcon={<DevicesIcon />}
+              onClick={handleOpenDeviceDialog}
+              sx={{
+                px: 3.5,
+                py: 1.25,
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                borderRadius: 3,
+                minWidth: { xs: '100%', md: 'auto' }
+              }}
+            >
+              Cihaz Seç
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+
       {/* Kişiler Bölümü */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h5" fontWeight="700" sx={{ fontSize: { xs: '1.375rem', md: '1.625rem' } }}>
           Kişiler
         </Typography>
-        {people.length > 0 && (
+        {filteredPeople.length > 0 && (
           <Button 
             variant="contained" 
             size="large"
             startIcon={<PersonAddIcon />}
             onClick={handleOpenDialog}
+            disabled={!selectedDevice}
             sx={{
               px: 3.5,
               py: 1.25,
               fontSize: '0.95rem',
               fontWeight: 700,
-              borderRadius: 3
+              borderRadius: 3,
+              opacity: selectedDevice ? 1 : 0.5
             }}
           >
             Kişi Ekle
@@ -303,7 +729,24 @@ const CitizenCampusInfo = () => {
         )}
       </Box>
 
-      {people.length === 0 ? (
+      {!selectedDevice ? (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 5,
+            borderRadius: 3,
+            border: '2px dashed rgba(0,0,0,0.15)',
+            textAlign: 'center',
+            color: 'text.secondary',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+          }}
+        >
+          <PersonAddIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1.5, opacity: 0.5 }} />
+          <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
+            Kişi eklemek için önce bir cihaz seçmelisiniz.
+          </Typography>
+        </Paper>
+      ) : filteredPeople.length === 0 ? (
         <Paper
           elevation={0}
           sx={{
@@ -324,12 +767,14 @@ const CitizenCampusInfo = () => {
             size="large"
             startIcon={<PersonAddIcon />}
             onClick={handleOpenDialog}
+            disabled={!selectedDevice}
             sx={{
               px: 3.5,
               py: 1.25,
               fontSize: '0.95rem',
               fontWeight: 700,
-              borderRadius: 3
+              borderRadius: 3,
+              opacity: selectedDevice ? 1 : 0.5
             }}
           >
             İlk Kişiyi Ekle
@@ -337,7 +782,7 @@ const CitizenCampusInfo = () => {
         </Paper>
       ) : (
         <Grid container spacing={2.5}>
-          {people.map((person) => (
+          {filteredPeople.map((person) => (
             <Grid item xs={12} md={6} key={person.id}>
               <Card 
                 elevation={0} 
@@ -386,6 +831,7 @@ const CitizenCampusInfo = () => {
                         setForm({
                           name: person.name,
                           gender: person.gender,
+                          tcKimlikNo: person.tcKimlikNo || '',
                           birthDate: person.birthDate ? dayjs(person.birthDate) : null,
                           bloodGroup: person.bloodGroup,
                           conditions: person.conditions || '',
@@ -442,6 +888,16 @@ const CitizenCampusInfo = () => {
                         {person.birthDate}
                       </Typography>
                     </Box>
+                    {person.tcKimlikNo && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          TC Kimlik Numarası
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500, fontFamily: 'monospace' }}>
+                          {person.tcKimlikNo}
+                        </Typography>
+                      </Box>
+                    )}
                     {person.conditions && (
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
@@ -487,18 +943,20 @@ const CitizenCampusInfo = () => {
           <Typography variant="h5" fontWeight="700" sx={{ fontSize: { xs: '1.375rem', md: '1.625rem' } }}>
             Evcil Hayvanlar
           </Typography>
-          {pets.length > 0 && (
+          {filteredPets.length > 0 && (
             <Button 
               variant="outlined" 
               size="large"
               startIcon={<PetsIcon />}
               onClick={handleOpenPetDialog}
+              disabled={!selectedDevice}
               sx={{
                 px: 3.5,
                 py: 1.25,
                 fontSize: '0.95rem',
                 fontWeight: 600,
-                borderRadius: 3
+                borderRadius: 3,
+                opacity: selectedDevice ? 1 : 0.5
               }}
             >
               Evcil Hayvan Ekle
@@ -506,7 +964,24 @@ const CitizenCampusInfo = () => {
           )}
         </Box>
 
-        {pets.length === 0 ? (
+        {!selectedDevice ? (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 5,
+              borderRadius: 3,
+              border: '2px dashed rgba(0,0,0,0.15)',
+              textAlign: 'center',
+              color: 'text.secondary',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+            }}
+          >
+            <PetsIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1.5, opacity: 0.5 }} />
+            <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
+              Evcil hayvan eklemek için önce bir cihaz seçmelisiniz.
+            </Typography>
+          </Paper>
+        ) : filteredPets.length === 0 ? (
           <Paper
             elevation={0}
             sx={{
@@ -527,12 +1002,14 @@ const CitizenCampusInfo = () => {
               size="large"
               startIcon={<PetsIcon />}
               onClick={handleOpenPetDialog}
+              disabled={!selectedDevice}
               sx={{
                 px: 3.5,
                 py: 1.25,
                 fontSize: '0.95rem',
                 fontWeight: 600,
-                borderRadius: 3
+                borderRadius: 3,
+                opacity: selectedDevice ? 1 : 0.5
               }}
             >
               İlk Evcil Hayvanı Ekle
@@ -540,7 +1017,7 @@ const CitizenCampusInfo = () => {
           </Paper>
         ) : (
           <Grid container spacing={2.5}>
-            {pets.map((pet) => (
+            {filteredPets.map((pet) => (
               <Grid item xs={12} md={6} key={pet.id}>
                 <Card 
                   elevation={0} 
@@ -573,8 +1050,10 @@ const CitizenCampusInfo = () => {
                           setPetForm({
                             name: pet.name,
                             animalType: pet.animalType,
-                            breed: pet.breed
+                            breed: pet.breed,
+                            microchipNumber: pet.microchipNumber || ''
                           });
+                          setPetTouched({});
                           setIsPetDialogOpen(true);
                         }}
                         sx={{
@@ -589,7 +1068,7 @@ const CitizenCampusInfo = () => {
                     <Stack spacing={1.5}>
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
-                          Hayvan Türü
+                          Tür
                         </Typography>
                         <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
                           {pet.animalType}
@@ -597,12 +1076,22 @@ const CitizenCampusInfo = () => {
                       </Box>
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
-                          Cinsi
+                          Irk
                         </Typography>
                         <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
                           {pet.breed}
                         </Typography>
                       </Box>
+                      {pet.microchipNumber && (
+                        <Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                            Mikro Çip Numarası
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500, fontFamily: 'monospace' }}>
+                            {pet.microchipNumber}
+                          </Typography>
+                        </Box>
+                      )}
                     </Stack>
                   </CardContent>
                 </Card>
@@ -672,6 +1161,35 @@ const CitizenCampusInfo = () => {
                   </Typography>
                 )}
               </FormControl>
+
+              <TextField
+                fullWidth
+                label="TC Kimlik Numarası"
+                value={form.tcKimlikNo || ''}
+                onChange={handleChange('tcKimlikNo')}
+                onBlur={handleBlur('tcKimlikNo')}
+                error={touched.tcKimlikNo && form.tcKimlikNo && (!isTcKimlikNoValid(form.tcKimlikNo) || !isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId))}
+                helperText={
+                  touched.tcKimlikNo && form.tcKimlikNo
+                    ? !isTcKimlikNoValid(form.tcKimlikNo)
+                      ? 'TC kimlik numarası tam olarak 11 haneli rakamlardan oluşmalıdır.'
+                      : !isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId)
+                      ? 'Bu TC kimlik numarası zaten kullanılıyor. Lütfen farklı bir numara girin.'
+                      : ''
+                    : '11 haneli benzersiz TC kimlik numarası (opsiyonel)'
+                }
+                placeholder="12345678901"
+                inputProps={{
+                  maxLength: 11,
+                  pattern: '[0-9]*',
+                  inputMode: 'numeric'
+                }}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: '1rem'
+                  }
+                }}
+              />
 
               <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
                 <DatePicker
@@ -924,7 +1442,12 @@ const CitizenCampusInfo = () => {
       {/* Evcil Hayvan Ekleme Diyaloğu */}
       <Dialog
         open={isPetDialogOpen}
-        onClose={handleClosePetDialog}
+        onClose={(event, reason) => {
+          // Sadece backdrop click veya escape key ile kapat
+          if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+            handleClosePetDialog();
+          }
+        }}
         fullWidth
         maxWidth="sm"
         PaperProps={{
@@ -950,7 +1473,7 @@ const CitizenCampusInfo = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Hangi Hayvan"
+                  label="Tür"
                   value={petForm.animalType}
                   onChange={handleChangePet('animalType')}
                   placeholder="Örn. Kedi, Köpek vb."
@@ -959,10 +1482,28 @@ const CitizenCampusInfo = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Cinsi"
+                  label="Irk"
                   value={petForm.breed}
                   onChange={handleChangePet('breed')}
+                  onBlur={handleBlurPet('breed')}
                   placeholder="Örn. Golden Retriever, Van Kedisi vb."
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Mikro Çip Numarası"
+                  value={petForm.microchipNumber || ''}
+                  onChange={handleChangePet('microchipNumber')}
+                  onBlur={handleBlurPet('microchipNumber')}
+                  error={isMicrochipNumberError}
+                  helperText={getMicrochipHelperText}
+                  placeholder="123456789012345"
+                  inputProps={{
+                    maxLength: 15,
+                    pattern: '[0-9]*',
+                    inputMode: 'numeric'
+                  }}
                 />
               </Grid>
             </Grid>
@@ -997,6 +1538,207 @@ const CitizenCampusInfo = () => {
             }}
           >
             Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cihaz Seçim Diyaloğu */}
+      <Dialog
+        open={isDeviceDialogOpen}
+        onClose={handleCloseDeviceDialog}
+        fullWidth
+        maxWidth="lg"
+        PaperProps={{
+          sx: {
+            borderRadius: 4
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontSize: '1.375rem', fontWeight: 700, pb: 1.5 }}>
+          Cihaz Seç
+        </DialogTitle>
+        <DialogContent dividers sx={{ pt: 2.5 }}>
+          {loadingDevices ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+              <CircularProgress />
+            </Box>
+          ) : devices.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 5 }}>
+              <RouterIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+              <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                Henüz cihaz bulunmuyor
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Önce cihazlarınız sayfasından bir cihaz eklemelisiniz.
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              {devices.map((device) => (
+                <Grid item xs={12} md={6} key={device._id || device.id}>
+                  <Card
+                    elevation={0}
+                    onClick={() => handleSelectDevice(device)}
+                    sx={{
+                      borderRadius: 4,
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                      border: (selectedDevice?._id === device._id || selectedDevice?.id === device.id) 
+                        ? '2px solid #1976d2' 
+                        : device.status === 'low_battery' 
+                        ? '2px solid #d32f2f' 
+                        : '1px solid rgba(0,0,0,0.08)',
+                      position: 'relative',
+                      overflow: 'visible',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease-in-out',
+                      '&:hover': {
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                        transform: 'translateY(-4px)'
+                      }
+                    }}
+                  >
+                    <Chip
+                      label={device.status === 'active' ? 'Aktif & Hazır' : device.status === 'low_battery' ? 'Pil Düşük!' : 'Pasif'}
+                      color={device.status === 'active' ? 'success' : 'error'}
+                      icon={device.status === 'active' ? <CheckCircleIcon /> : <WarningIcon />}
+                      sx={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        fontWeight: '700',
+                        fontSize: '0.875rem',
+                        height: 32,
+                        px: 1,
+                        zIndex: 1
+                      }}
+                    />
+
+                    <CardContent sx={{ p: 3 }}>
+                      <Stack direction="row" spacing={2.5} alignItems="center" sx={{ mb: 2.5 }}>
+                        <Avatar
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            bgcolor: 'primary.light',
+                            color: 'primary.main'
+                          }}
+                        >
+                          <RouterIcon sx={{ fontSize: 28 }} />
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="h5" fontWeight="800" sx={{ mb: 0.5, fontSize: { xs: '1.125rem', md: '1.375rem' } }}>
+                            {device.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                            Son görülme: {formatLastSeen(device.last_seen)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <Divider sx={{ mb: 2.5, borderWidth: 1 }} />
+
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              bgcolor: 'background.default',
+                              borderRadius: 2,
+                              border: '1px solid rgba(0,0,0,0.05)'
+                            }}
+                          >
+                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                              <BatteryStdIcon color={getBatteryColor(device.battery || 0)} sx={{ fontSize: 20 }} />
+                              <Typography variant="body2" fontWeight="700" sx={{ fontSize: '0.85rem' }}>
+                                Batarya
+                              </Typography>
+                            </Stack>
+                            <LinearProgress
+                              variant="determinate"
+                              value={device.battery || 0}
+                              color={getBatteryColor(device.battery || 0)}
+                              sx={{ height: 8, borderRadius: 4, mb: 1 }}
+                            />
+                            <Typography variant="h6" sx={{ textAlign: 'right', fontWeight: '800', fontSize: '1.125rem' }}>
+                              %{device.battery || 0}
+                            </Typography>
+                          </Paper>
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              bgcolor: 'background.default',
+                              borderRadius: 2,
+                              border: '1px solid rgba(0,0,0,0.05)'
+                            }}
+                          >
+                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                              <SmartphoneIcon color="primary" sx={{ fontSize: 20 }} />
+                              <Typography variant="body2" fontWeight="700" sx={{ fontSize: '0.85rem' }}>
+                                Bağlı Cihaz
+                              </Typography>
+                            </Stack>
+                            <Typography variant="h5" fontWeight="800" color="primary.main" sx={{ mb: 0.5, fontSize: '1.5rem' }}>
+                              {device.connected_devices || 0}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              Telefon mesh ağına bağlı
+                            </Typography>
+                          </Paper>
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              bgcolor: 'background.default',
+                              borderRadius: 2,
+                              border: '1px solid rgba(0,0,0,0.05)'
+                            }}
+                          >
+                            <Stack direction="row" alignItems="center" spacing={1.5}>
+                              <SignalCellularAltIcon 
+                                color={device.signal_quality === 'strong' ? 'success' : device.signal_quality === 'medium' ? 'warning' : 'error'} 
+                                sx={{ fontSize: 24 }}
+                              />
+                              <Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem', mb: 0.25 }}>
+                                  Mesh Bağlantı Kalitesi
+                                </Typography>
+                                <Typography variant="body1" fontWeight="700" sx={{ fontSize: '0.95rem' }}>
+                                  {device.signal_quality === 'strong' ? 'Mükemmel' : device.signal_quality === 'medium' ? 'Orta Seviye' : 'Zayıf'}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                          </Paper>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button 
+            onClick={handleCloseDeviceDialog} 
+            color="inherit"
+            size="large"
+            sx={{
+              px: 2.5,
+              py: 1.25,
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              borderRadius: 2
+            }}
+          >
+            İptal
           </Button>
         </DialogActions>
       </Dialog>
