@@ -63,6 +63,7 @@ const CitizenCampusInfo = () => {
   const [form, setForm] = useState({
     name: '',
     gender: '',
+    tcKimlikNo: '',
     birthDate: null,
     bloodGroup: '',
     conditions: '',
@@ -160,6 +161,7 @@ const CitizenCampusInfo = () => {
     setForm({
       name: '',
       gender: '',
+      tcKimlikNo: '',
       birthDate: null,
       bloodGroup: '',
       conditions: '',
@@ -179,6 +181,7 @@ const CitizenCampusInfo = () => {
     setForm({
       name: '',
       gender: '',
+      tcKimlikNo: '',
       birthDate: null,
       bloodGroup: '',
       conditions: '',
@@ -216,9 +219,16 @@ const CitizenCampusInfo = () => {
   };
 
   const handleChange = (field) => (event) => {
+    let value = event.target.value;
+    
+    // TC kimlik numarası için sadece rakam kabul et ve maksimum 11 karakter
+    if (field === 'tcKimlikNo') {
+      value = value.replace(/\D/g, '').slice(0, 11);
+    }
+    
     setForm((prev) => ({
       ...prev,
-      [field]: event.target.value
+      [field]: value
     }));
   };
 
@@ -240,17 +250,48 @@ const CitizenCampusInfo = () => {
     return touched[field] && !form[field];
   };
 
+  const isTcKimlikNoValid = (tcKimlikNo) => {
+    if (!tcKimlikNo) return true; // Opsiyonel alan
+    return /^\d{11}$/.test(tcKimlikNo);
+  };
+
+  const isTcKimlikNoUnique = (tcKimlikNo, editingPersonId) => {
+    if (!tcKimlikNo) return true; // Opsiyonel alan
+    try {
+      if (!people || !Array.isArray(people)) return true;
+      const deviceId = selectedDevice?._id || selectedDevice?.id;
+      if (!deviceId) return true; // Cihaz seçilmemişse benzersiz kabul et
+      
+      const existingPerson = people.find(p => {
+        try {
+          return p && 
+                 p.tcKimlikNo === tcKimlikNo && 
+                 p.id !== editingPersonId &&
+                 (p.deviceId === deviceId);
+        } catch (err) {
+          return false;
+        }
+      });
+      return !existingPerson;
+    } catch (error) {
+      console.error('Error checking TC kimlik uniqueness:', error);
+      return true; // Hata durumunda benzersiz kabul et
+    }
+  };
+
   const isFormValid =
     form.name &&
     form.gender &&
     form.birthDate &&
-    form.bloodGroup;
+    form.bloodGroup &&
+    (!form.tcKimlikNo || (isTcKimlikNoValid(form.tcKimlikNo) && isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId)));
 
   const handleSavePerson = () => {
     if (!isFormValid) {
       setTouched({
         name: true,
         gender: true,
+        tcKimlikNo: true,
         birthDate: true,
         bloodGroup: true
       });
@@ -790,6 +831,7 @@ const CitizenCampusInfo = () => {
                         setForm({
                           name: person.name,
                           gender: person.gender,
+                          tcKimlikNo: person.tcKimlikNo || '',
                           birthDate: person.birthDate ? dayjs(person.birthDate) : null,
                           bloodGroup: person.bloodGroup,
                           conditions: person.conditions || '',
@@ -846,6 +888,16 @@ const CitizenCampusInfo = () => {
                         {person.birthDate}
                       </Typography>
                     </Box>
+                    {person.tcKimlikNo && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          TC Kimlik Numarası
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: '0.95rem', fontWeight: 500, fontFamily: 'monospace' }}>
+                          {person.tcKimlikNo}
+                        </Typography>
+                      </Box>
+                    )}
                     {person.conditions && (
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
@@ -1109,6 +1161,35 @@ const CitizenCampusInfo = () => {
                   </Typography>
                 )}
               </FormControl>
+
+              <TextField
+                fullWidth
+                label="TC Kimlik Numarası"
+                value={form.tcKimlikNo || ''}
+                onChange={handleChange('tcKimlikNo')}
+                onBlur={handleBlur('tcKimlikNo')}
+                error={touched.tcKimlikNo && form.tcKimlikNo && (!isTcKimlikNoValid(form.tcKimlikNo) || !isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId))}
+                helperText={
+                  touched.tcKimlikNo && form.tcKimlikNo
+                    ? !isTcKimlikNoValid(form.tcKimlikNo)
+                      ? 'TC kimlik numarası tam olarak 11 haneli rakamlardan oluşmalıdır.'
+                      : !isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId)
+                      ? 'Bu TC kimlik numarası zaten kullanılıyor. Lütfen farklı bir numara girin.'
+                      : ''
+                    : '11 haneli benzersiz TC kimlik numarası (opsiyonel)'
+                }
+                placeholder="12345678901"
+                inputProps={{
+                  maxLength: 11,
+                  pattern: '[0-9]*',
+                  inputMode: 'numeric'
+                }}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: '1rem'
+                  }
+                }}
+              />
 
               <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
                 <DatePicker
