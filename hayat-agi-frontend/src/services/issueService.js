@@ -3,7 +3,7 @@ import api from './api';
 // Sorun bildir
 export const reportIssue = async (title, description) => {
   try {
-    const response = await api.post('/api/issues/report', {
+    const response = await api.post('/issues/report', {
       title,
       description
     });
@@ -17,7 +17,7 @@ export const reportIssue = async (title, description) => {
 export const getAllIssues = async (status = null) => {
   try {
     const params = status ? { status } : {};
-    const response = await api.get('/api/issues/all', { params });
+    const response = await api.get('/issues/all', { params });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Sorunlar alınırken bir hata oluştu' };
@@ -27,7 +27,7 @@ export const getAllIssues = async (status = null) => {
 // Admin: Sorun detayını getir
 export const getIssueById = async (id) => {
   try {
-    const response = await api.get(`/api/issues/${id}`);
+    const response = await api.get(`/issues/${id}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Sorun detayı alınırken bir hata oluştu' };
@@ -37,7 +37,7 @@ export const getIssueById = async (id) => {
 // Admin: Sorun durumunu güncelle
 export const updateIssueStatus = async (id, status, adminNotes = '') => {
   try {
-    const response = await api.put(`/api/issues/${id}/status`, {
+    const response = await api.put(`/issues/${id}/status`, {
       status,
       adminNotes
     });

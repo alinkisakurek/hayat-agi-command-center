@@ -17,6 +17,19 @@ exports.getGateways = async (req, res) => {
   }
 };
 
+// Get User's Gateways
+exports.getUserGateways = async (req, res) => {
+  try {
+    if (isMongoDBConnected()) {
+      const gateways = await Gateway.find({ owner: req.user._id }).sort({ createdAt: -1 });
+      res.status(200).json(gateways);
+    }
+  } catch (error) {
+    console.error('Error fetching gateways:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Create New Gateway
 exports.createGateway = async (req, res) => {
   try {
@@ -93,6 +106,104 @@ exports.deleteGateway = async (req, res) => {
     }
 
     res.json({ message: 'Gateway silindi.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.addPersonToGateway = async (req, res) => {
+  try {
+    const { id } = req.params; // Gateway ID'si URL'den gelir
+    const personData = req.body; // Formdan gelen kişi bilgileri
+
+    // 1. Gateway'i bul (Sadece kendi cihazına ekleyebilsin diye owner kontrolü şart)
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
+    }
+
+    // 2. Kişiyi diziye ekle
+    // Not: Mongoose, şemadaki validasyonları (TC, isim zorunluluğu vb.) burada kontrol eder.
+    gateway.registered_users.push(personData);
+
+    // 3. Kaydet
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Kişi başarıyla eklendi.',
+      updatedGateway: gateway
+    });
+
+  } catch (error) {
+    res.status(400).json({ message: 'Kişi eklenemedi.', error: error.message });
+  }
+};
+
+// 2. Gateway'den Kişi Sil
+exports.removePersonFromGateway = async (req, res) => {
+  try {
+    const { gatewayId, personId } = req.params;
+
+    const gateway = await Gateway.findOne({ _id: gatewayId, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı.' });
+    }
+
+    // Subdocument'i silme yöntemi
+    gateway.registered_users.pull({ _id: personId });
+
+    await gateway.save();
+
+    res.status(200).json({ message: 'Kişi silindi.', updatedGateway: gateway });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 3. Gateway'e Evcil Hayvan Ekle
+exports.addPetToGateway = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const petData = req.body;
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı.' });
+    }
+
+    gateway.registered_animals.push(petData);
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Evcil hayvan eklendi.',
+      updatedGateway: gateway
+    });
+
+  } catch (error) {
+    res.status(400).json({ message: 'Evcil hayvan eklenemedi.', error: error.message });
+  }
+};
+
+// 4. Gateway'den Evcil Hayvan Sil
+exports.removePetFromGateway = async (req, res) => {
+  try {
+    const { gatewayId, petId } = req.params;
+
+    const gateway = await Gateway.findOne({ _id: gatewayId, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı.' });
+    }
+
+    gateway.registered_animals.pull({ _id: petId });
+    await gateway.save();
+
+    res.status(200).json({ message: 'Evcil hayvan silindi.', updatedGateway: gateway });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

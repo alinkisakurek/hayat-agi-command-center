@@ -43,15 +43,12 @@ import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import DevicesIcon from '@mui/icons-material/Devices';
-import { diseases, medications, prosthetics, getAllMedications } from '../data/healthData';
-import { getGateways } from '../api/gatewayService';
+import { getUserGateways, addPersonToGateway, addPetToGateway, removePersonFromGateway, removePetFromGateway } from '../api/gatewayService';
+import { getSystemOptions } from '../services/metadataService';
 
-const BLOOD_GROUPS = [
-  'A Rh(+)', 'A Rh(-)',
-  'B Rh(+)', 'B Rh(-)',
-  'AB Rh(+)', 'AB Rh(-)',
-  '0 Rh(+)', '0 Rh(-)'
-];
+// Options will be derived from backend metadata (healthOptions, genderLabels)
+
+
 
 const CitizenCampusInfo = () => {
   const [people, setPeople] = useState([]);
@@ -60,6 +57,14 @@ const CitizenCampusInfo = () => {
   const [isPetDialogOpen, setIsPetDialogOpen] = useState(false);
   const [editingPersonId, setEditingPersonId] = useState(null);
   const [editingPetId, setEditingPetId] = useState(null);
+  const [metadata, setMetadata] = useState({
+    bloodGroups: [],
+    chronicConditions: [],
+    medications: [],
+    prostheses: [],
+    genders: {}
+  });
+  const [loadingMetadata, setLoadingMetadata] = useState(true);
   const [form, setForm] = useState({
     name: '',
     gender: '',
@@ -86,12 +91,46 @@ const CitizenCampusInfo = () => {
   const [isDeviceDialogOpen, setIsDeviceDialogOpen] = useState(false);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
+  // derive option objects from backend metadata (so component uses objects with id,name,category)
+  const diseaseOptions = useMemo(() => (metadata.chronicConditions || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.chronicConditions]);
+  const medicationOptions = useMemo(() => (metadata.medications || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.medications]);
+  const prostheticOptions = useMemo(() => (metadata.prostheses || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.prostheses]);
+  const genderEntries = useMemo(() => Object.entries(metadata.genders || {}), [metadata.genders]);
+
+  useEffect(() => {
+    const loadMetadata = async () => {
+      try {
+        const data = await getSystemOptions();
+        // Backend'den gelen veriyi state'e atıyoruz.
+        // Backend response shape: { healthOptions: { bloodGroups, chronicConditions, medications, prostheses }, genderLabels }
+        if (data) {
+          const ho = data.healthOptions || data.HEALTH_OPTIONS || {};
+          const gl = data.genderLabels || data.GENDER_LABELS || {};
+          setMetadata({
+            bloodGroups: ho.bloodGroups || [],
+            chronicConditions: ho.chronicConditions || [],
+            medications: ho.medications || [],
+            prostheses: ho.prostheses || [],
+            genders: gl || {}
+          });
+        }
+      } catch (error) {
+        console.error('Metadata yüklenemedi:', error);
+        // Hata olursa fallback (boş) değerler kalır veya buraya manuel default atayabilirsin
+      } finally {
+        setLoadingMetadata(false);
+      }
+    };
+    loadMetadata();
+  }, []);
+
   // Cihazları yükle
   useEffect(() => {
     const loadDevices = async () => {
       setLoadingDevices(true);
       try {
-        const data = await getGateways();
+        // Only fetch gateways that belong to the logged-in user
+        const data = await getUserGateways();
         setDevices(data);
       } catch (error) {
         console.error('Cihazlar yüklenirken hata:', error);
@@ -134,6 +173,40 @@ const CitizenCampusInfo = () => {
   const handleSelectDevice = (device) => {
     setSelectedDevice(device);
     setIsDeviceDialogOpen(false);
+
+    // Populate people & pets from selected device (backend shape -> frontend shape)
+    try {
+      const deviceId = device._id || device.id;
+
+      const mappedPeople = (device.registered_users || []).map((u) => ({
+        id: u._id || u.id || Date.now().toString(),
+        name: u.fullname || '',
+        tcKimlikNo: u.tcNumber || '',
+        gender: u.gender || '',
+        birthDate: u.birthDate ? new Date(u.birthDate).toLocaleDateString('tr-TR') : '',
+        bloodGroup: u.bloodType || '',
+        conditions: Array.isArray(u.medicalConditions) ? u.medicalConditions.join(', ') : (u.medicalConditions || ''),
+        medications: Array.isArray(u.medications) ? u.medications.join(', ') : (u.medications || ''),
+        prosthetics: Array.isArray(u.prosthetics) ? u.prosthetics.join(', ') : (u.prosthetics || ''),
+        deviceId,
+        deviceName: device.name || ''
+      }));
+
+      const mappedPets = (device.registered_animals || []).map((p) => ({
+        id: p._id || p.id || Date.now().toString(),
+        name: p.name || '',
+        animalType: p.species || '',
+        breed: p.breed || '',
+        microchipNumber: p.microchipId || '',
+        deviceId,
+        deviceName: device.name || ''
+      }));
+
+      setPeople(mappedPeople);
+      setPets(mappedPets);
+    } catch (err) {
+      console.error('Error mapping device users/pets:', err);
+    }
   };
 
   // Seçili cihaza ait kişileri filtrele
@@ -220,12 +293,12 @@ const CitizenCampusInfo = () => {
 
   const handleChange = (field) => (event) => {
     let value = event.target.value;
-    
+
     // TC kimlik numarası için sadece rakam kabul et ve maksimum 11 karakter
     if (field === 'tcKimlikNo') {
       value = value.replace(/\D/g, '').slice(0, 11);
     }
-    
+
     setForm((prev) => ({
       ...prev,
       [field]: value
@@ -261,13 +334,13 @@ const CitizenCampusInfo = () => {
       if (!people || !Array.isArray(people)) return true;
       const deviceId = selectedDevice?._id || selectedDevice?.id;
       if (!deviceId) return true; // Cihaz seçilmemişse benzersiz kabul et
-      
+
       const existingPerson = people.find(p => {
         try {
-          return p && 
-                 p.tcKimlikNo === tcKimlikNo && 
-                 p.id !== editingPersonId &&
-                 (p.deviceId === deviceId);
+          return p &&
+            p.tcKimlikNo === tcKimlikNo &&
+            p.id !== editingPersonId &&
+            (p.deviceId === deviceId);
         } catch (err) {
           return false;
         }
@@ -286,7 +359,7 @@ const CitizenCampusInfo = () => {
     form.bloodGroup &&
     (!form.tcKimlikNo || (isTcKimlikNoValid(form.tcKimlikNo) && isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId)));
 
-  const handleSavePerson = () => {
+  const handleSavePerson = async () => {
     if (!isFormValid) {
       setTouched({
         name: true,
@@ -298,68 +371,105 @@ const CitizenCampusInfo = () => {
       return;
     }
 
-    const conditionsString = selectedDiseases.length
-      ? selectedDiseases.map((d) => d.name).join(', ')
-      : form.conditions || '';
+    const medicalConditionsArray = selectedDiseases.length
+      ? selectedDiseases.map((d) => d.name)
+      : (form.conditions ? form.conditions.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-    const medicationsString = selectedMedications.length
-      ? selectedMedications.map((m) => m.name).join(', ')
-      : form.medications || '';
+    const medicationsArray = selectedMedications.length
+      ? selectedMedications.map((m) => m.name)
+      : (form.medications ? form.medications.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-    const prostheticsString = selectedProsthetics.length
-      ? selectedProsthetics.map((p) => p.name).join(', ')
-      : form.prosthetics || '';
+    const prostheticsArray = selectedProsthetics.length
+      ? selectedProsthetics.map((p) => p.name)
+      : (form.prosthetics ? form.prosthetics.split(',').map(s => s.trim()).filter(Boolean) : []);
 
     const currentDeviceId = selectedDevice?._id || selectedDevice?.id || null;
     const currentDeviceName = selectedDevice?.name || null;
 
-    const personData = {
-      ...form,
-      conditions: conditionsString,
-      medications: medicationsString,
-      prosthetics: prostheticsString,
-      birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : '',
-      deviceId: editingPersonId 
-        ? (people.find(p => p.id === editingPersonId)?.deviceId || currentDeviceId)
-        : currentDeviceId,
-      deviceName: editingPersonId
-        ? (people.find(p => p.id === editingPersonId)?.deviceName || currentDeviceName)
-        : currentDeviceName
+    const personPayload = {
+      fullname: form.name,
+      tcNumber: form.tcKimlikNo || undefined,
+      gender: form.gender || undefined,
+      birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : undefined,
+      bloodType: form.bloodGroup || undefined,
+      medicalConditions: medicalConditionsArray,
+      medications: medicationsArray,
+      prosthetics: prostheticsArray
     };
 
-    if (editingPersonId) {
-      setPeople((prev) =>
-        prev.map((p) =>
-          p.id === editingPersonId
-            ? { ...p, ...personData }
-            : p
-        )
-      );
-    } else {
-      setPeople((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          ...personData
-        }
-      ]);
-    }
+    try {
+      if (!currentDeviceId) throw new Error('Lütfen önce bir cihaz seçin.');
 
-    handleCloseDialog();
+      // If adding a new person -> persist to backend
+      if (!editingPersonId) {
+        const { updatedGateway } = await addPersonToGateway(currentDeviceId, personPayload);
+        // Map backend users to frontend people
+        const mapped = (updatedGateway.registered_users || []).map((u) => ({
+          id: u._id || u.id || Date.now().toString(),
+          name: u.fullname || '',
+          tcKimlikNo: u.tcNumber || '',
+          gender: u.gender || '',
+          birthDate: u.birthDate ? new Date(u.birthDate).toLocaleDateString('tr-TR') : '',
+          bloodGroup: u.bloodType || '',
+          conditions: Array.isArray(u.medicalConditions) ? u.medicalConditions.join(', ') : (u.medicalConditions || ''),
+          medications: Array.isArray(u.medications) ? u.medications.join(', ') : (u.medications || ''),
+          prosthetics: Array.isArray(u.prosthetics) ? u.prosthetics.join(', ') : (u.prosthetics || ''),
+          deviceId: currentDeviceId,
+          deviceName: currentDeviceName
+        }));
+        setPeople(mapped);
+
+        // Also refresh pets from updatedGateway just in case
+        const mappedPets = (updatedGateway.registered_animals || []).map((p) => ({
+          id: p._id || p.id || Date.now().toString(),
+          name: p.name || '',
+          animalType: p.species || '',
+          breed: p.breed || '',
+          microchipNumber: p.microchipId || '',
+          deviceId: currentDeviceId,
+          deviceName: currentDeviceName
+        }));
+        setPets(mappedPets);
+      } else {
+        // Editing existing person: currently update happens locally (backend doesn't expose update endpoint)
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === editingPersonId
+              ? {
+                ...p,
+                name: form.name,
+                tcKimlikNo: form.tcKimlikNo || '',
+                gender: form.gender || '',
+                birthDate: form.birthDate ? form.birthDate.format('YYYY-MM-DD') : '',
+                bloodGroup: form.bloodGroup || '',
+                conditions: medicalConditionsArray.join(', '),
+                medications: medicationsArray.join(', '),
+                prosthetics: prostheticsArray.join(', ')
+              }
+              : p
+          )
+        );
+      }
+
+      handleCloseDialog();
+    } catch (err) {
+      console.error('Kişi ekleme hatası:', err);
+      // TODO: show user-friendly error notification (snackbar) - can be added centrally
+    }
   };
 
   const isPetFormValid = useMemo(() => {
     try {
       const basicFieldsValid = petForm.name && petForm.animalType && petForm.breed;
       if (!basicFieldsValid) return false;
-      
+
       // Mikro çip numarası opsiyonel, eğer girilmişse geçerli ve benzersiz olmalı
       if (petForm.microchipNumber) {
         const isValid = isMicrochipNumberValid(petForm.microchipNumber);
         const isUnique = isMicrochipNumberUnique(petForm.microchipNumber, editingPetId);
         return isValid && isUnique;
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error in isPetFormValid:', error);
@@ -372,12 +482,12 @@ const CitizenCampusInfo = () => {
     try {
       event.stopPropagation();
       let value = event.target.value;
-      
+
       // Mikro çip numarası için sadece rakam kabul et ve maksimum 15 karakter
       if (field === 'microchipNumber') {
         value = value.replace(/\D/g, '').slice(0, 15);
       }
-      
+
       setPetForm((prev) => ({
         ...prev,
         [field]: value
@@ -391,24 +501,24 @@ const CitizenCampusInfo = () => {
     setPetTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const isMicrochipNumberValid = (microchipNumber) => {
+  function isMicrochipNumberValid(microchipNumber) {
     if (!microchipNumber) return true; // Opsiyonel alan
     return /^\d{15}$/.test(microchipNumber);
-  };
+  }
 
-  const isMicrochipNumberUnique = (microchipNumber, editingPetId) => {
+  function isMicrochipNumberUnique(microchipNumber, editingPetId) {
     if (!microchipNumber) return true; // Opsiyonel alan
     try {
       if (!pets || !Array.isArray(pets)) return true;
       const deviceId = selectedDevice?._id || selectedDevice?.id;
       if (!deviceId) return true; // Cihaz seçilmemişse benzersiz kabul et
-      
+
       const existingPet = pets.find(p => {
         try {
-          return p && 
-                 p.microchipNumber === microchipNumber && 
-                 p.id !== editingPetId &&
-                 (p.deviceId === deviceId);
+          return p &&
+            p.microchipNumber === microchipNumber &&
+            p.id !== editingPetId &&
+            (p.deviceId === deviceId);
         } catch (err) {
           return false;
         }
@@ -418,7 +528,7 @@ const CitizenCampusInfo = () => {
       console.error('Error checking microchip uniqueness:', error);
       return true; // Hata durumunda benzersiz kabul et
     }
-  };
+  }
 
   const isMicrochipNumberError = useMemo(() => {
     try {
@@ -449,7 +559,7 @@ const CitizenCampusInfo = () => {
     }
   }, [petTouched.microchipNumber, petForm.microchipNumber, editingPetId, pets, selectedDevice]);
 
-  const handleSavePet = () => {
+  const handleSavePet = async () => {
     if (!isPetFormValid) {
       setPetTouched({
         name: true,
@@ -463,37 +573,54 @@ const CitizenCampusInfo = () => {
     const currentDeviceId = selectedDevice?._id || selectedDevice?.id || null;
     const currentDeviceName = selectedDevice?.name || null;
 
-    const petData = {
-      ...petForm,
-      deviceId: editingPetId
-        ? (pets.find(p => p.id === editingPetId)?.deviceId || currentDeviceId)
-        : currentDeviceId,
-      deviceName: editingPetId
-        ? (pets.find(p => p.id === editingPetId)?.deviceName || currentDeviceName)
-        : currentDeviceName
+    const petPayload = {
+      name: petForm.name,
+      species: petForm.animalType,
+      breed: petForm.breed,
+      microchipId: petForm.microchipNumber || undefined
     };
 
-    if (editingPetId) {
-      setPets((prev) =>
-        prev.map((pet) =>
-          pet.id === editingPetId
-            ? { ...pet, ...petData }
-            : pet
-        )
-      );
-    } else {
-      setPets((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          ...petData
-        }
-      ]);
+    try {
+      if (!currentDeviceId) throw new Error('Lütfen önce bir cihaz seçin.');
+
+      if (!editingPetId) {
+        const { updatedGateway } = await addPetToGateway(currentDeviceId, petPayload);
+
+        const mappedPets = (updatedGateway.registered_animals || []).map((p) => ({
+          id: p._id || p.id || Date.now().toString(),
+          name: p.name || '',
+          animalType: p.species || '',
+          breed: p.breed || '',
+          microchipNumber: p.microchipId || '',
+          deviceId: currentDeviceId,
+          deviceName: currentDeviceName
+        }));
+        setPets(mappedPets);
+      } else {
+        // editing locally (no backend update endpoint)
+        setPets((prev) =>
+          prev.map((pet) =>
+            pet.id === editingPetId
+              ? { ...pet, name: petForm.name, animalType: petForm.animalType, breed: petForm.breed, microchipNumber: petForm.microchipNumber }
+              : pet
+          )
+        );
+      }
+
+      handleClosePetDialog();
+    } catch (err) {
+      console.error('Evcil hayvan ekleme hatası:', err);
+      // TODO: user notification
     }
-
-    handleClosePetDialog();
   };
-
+  if (loadingMetadata) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Sistem verileri yükleniyor...</Typography>
+      </Box>
+    );
+  }
   return (
     <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
       {/* Başlık Bölümü */}
@@ -659,8 +786,8 @@ const CitizenCampusInfo = () => {
                           }}
                         >
                           <Stack direction="row" alignItems="center" spacing={1}>
-                            <SignalCellularAltIcon 
-                              color={selectedDevice.signal_quality === 'strong' ? 'success' : selectedDevice.signal_quality === 'medium' ? 'warning' : 'error'} 
+                            <SignalCellularAltIcon
+                              color={selectedDevice.signal_quality === 'strong' ? 'success' : selectedDevice.signal_quality === 'medium' ? 'warning' : 'error'}
                               sx={{ fontSize: 20 }}
                             />
                             <Box>
@@ -683,8 +810,8 @@ const CitizenCampusInfo = () => {
                 </Typography>
               )}
             </Box>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               size="large"
               startIcon={<DevicesIcon />}
               onClick={handleOpenDeviceDialog}
@@ -709,8 +836,8 @@ const CitizenCampusInfo = () => {
           Kişiler
         </Typography>
         {filteredPeople.length > 0 && (
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
             startIcon={<PersonAddIcon />}
             onClick={handleOpenDialog}
@@ -762,8 +889,8 @@ const CitizenCampusInfo = () => {
           <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
             Henüz kayıtlı bir kişi bulunmuyor.
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
             startIcon={<PersonAddIcon />}
             onClick={handleOpenDialog}
@@ -784,10 +911,10 @@ const CitizenCampusInfo = () => {
         <Grid container spacing={2.5}>
           {filteredPeople.map((person) => (
             <Grid item xs={12} md={6} key={person.id}>
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  borderRadius: 4, 
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 4,
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                   transition: 'all 0.3s ease-in-out',
@@ -810,73 +937,99 @@ const CitizenCampusInfo = () => {
                           {person.name}
                         </Typography>
                         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 0.75 }}>
-                          <Chip 
-                            label={person.gender === 'male' ? 'Erkek' : 'Kadın'} 
+                          <Chip
+                            label={person.gender === 'male' ? 'Erkek' : 'Kadın'}
                             size="small"
                             sx={{ fontSize: '0.8rem', fontWeight: 600, height: 26 }}
                           />
-                          <Chip 
-                            label={person.bloodGroup} 
-                            size="small" 
-                            color="primary" 
+                          <Chip
+                            label={person.bloodGroup}
+                            size="small"
+                            color="primary"
                             variant="outlined"
                             sx={{ fontSize: '0.8rem', fontWeight: 600, height: 26 }}
                           />
                         </Stack>
                       </Box>
                     </Stack>
-                    <IconButton
-                      onClick={() => {
-                        setEditingPersonId(person.id);
-                        setForm({
-                          name: person.name,
-                          gender: person.gender,
-                          tcKimlikNo: person.tcKimlikNo || '',
-                          birthDate: person.birthDate ? dayjs(person.birthDate) : null,
-                          bloodGroup: person.bloodGroup,
-                          conditions: person.conditions || '',
-                          medications: person.medications || '',
-                          prosthetics: person.prosthetics || ''
-                        });
+                    <Box>
+                      <IconButton
+                        onClick={() => {
+                          setEditingPersonId(person.id);
+                          setForm({
+                            name: person.name,
+                            gender: person.gender,
+                            tcKimlikNo: person.tcKimlikNo || '',
+                            birthDate: person.birthDate ? dayjs(person.birthDate) : null,
+                            bloodGroup: person.bloodGroup,
+                            conditions: person.conditions || '',
+                            medications: person.medications || '',
+                            prosthetics: person.prosthetics || ''
+                          });
 
-                        // Mevcut rahatsızlıkları healthData listesindeki objelere eşleştir
-                        const conditionsArray = person.conditions
-                          ? person.conditions.split(',').map((s) => s.trim()).filter(Boolean)
-                          : [];
-                        const matchedDiseases = conditionsArray.map((name) =>
-                          diseases.find((d) => d.name === name) || { id: name, name, category: 'Diğer' }
-                        );
-                        setSelectedDiseases(matchedDiseases);
+                          // Mevcut rahatsızlıkları healthData listesindeki objelere eşleştir
+                          const conditionsArray = person.conditions
+                            ? person.conditions.split(',').map((s) => s.trim()).filter(Boolean)
+                            : [];
+                          const matchedDiseases = conditionsArray.map((name) =>
+                            diseaseOptions.find((d) => d.name === name) || { id: name, name, category: 'Diğer' }
+                          );
+                          setSelectedDiseases(matchedDiseases);
 
-                        // Mevcut ilaçları healthData listesindeki objelere eşleştir
-                        const medicationsArray = person.medications
-                          ? person.medications.split(',').map((s) => s.trim()).filter(Boolean)
-                          : [];
-                        const allMeds = getAllMedications();
-                        const matchedMeds = medicationsArray.map((name) =>
-                          allMeds.find((m) => m.name === name) || { id: name, name, category: 'Diğer' }
-                        );
-                        setSelectedMedications(matchedMeds);
+                          // Mevcut ilaçları healthData listesindeki objelere eşleştir
+                          const medicationsArray = person.medications
+                            ? person.medications.split(',').map((s) => s.trim()).filter(Boolean)
+                            : [];
+                          const matchedMeds = medicationsArray.map((name) =>
+                            medicationOptions.find((m) => m.name === name) || { id: name, name, category: 'Diğer' }
+                          );
+                          setSelectedMedications(matchedMeds);
 
-                        // Mevcut protezleri healthData listesindeki objelere eşleştir
-                        const prostheticsArray = person.prosthetics
-                          ? person.prosthetics.split(',').map((s) => s.trim()).filter(Boolean)
-                          : [];
-                        const matchedProsthetics = prostheticsArray.map((name) =>
-                          prosthetics.find((p) => p.name === name) || { id: name, name, category: 'Diğer' }
-                        );
-                        setSelectedProsthetics(matchedProsthetics);
+                          // Mevcut protezleri healthData listesindeki objelere eşleştir
+                          const prostheticsArray = person.prosthetics
+                            ? person.prosthetics.split(',').map((s) => s.trim()).filter(Boolean)
+                            : [];
+                          const matchedProsthetics = prostheticsArray.map((name) =>
+                            prostheticOptions.find((p) => p.name === name) || { id: name, name, category: 'Diğer' }
+                          );
+                          setSelectedProsthetics(matchedProsthetics);
 
-                        setTouched({});
-                        setIsDialogOpen(true);
-                      }}
-                      sx={{
-                        bgcolor: 'action.hover',
-                        '&:hover': { bgcolor: 'action.selected' }
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
+                          setTouched({});
+                          setIsDialogOpen(true);
+                        }}
+                        sx={{
+                          bgcolor: 'action.hover',
+                          '&:hover': { bgcolor: 'action.selected' }
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+
+                      <IconButton
+                        onClick={async () => {
+                          // Only allow delete for server-side records (have object id-like string)
+                          try {
+                            const personId = person.id;
+                            const deviceId = person.deviceId || selectedDevice?._id || selectedDevice?.id;
+                            if (!deviceId || !personId) return;
+                            // Attempt to remove from backend
+                            await removePersonFromGateway(deviceId, personId);
+                            // Refresh local list
+                            const remaining = people.filter((p) => p.id !== person.id);
+                            setPeople(remaining);
+                          } catch (err) {
+                            console.error('Kişi silme hatası:', err);
+                          }
+                        }}
+                        sx={{
+                          ml: 1,
+                          bgcolor: 'action.hover',
+                          '&:hover': { bgcolor: 'action.selected' }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
                   </Box>
                   <Divider sx={{ mb: 2.5, borderWidth: 1 }} />
                   <Stack spacing={1.5}>
@@ -944,8 +1097,8 @@ const CitizenCampusInfo = () => {
             Evcil Hayvanlar
           </Typography>
           {filteredPets.length > 0 && (
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               size="large"
               startIcon={<PetsIcon />}
               onClick={handleOpenPetDialog}
@@ -997,8 +1150,8 @@ const CitizenCampusInfo = () => {
             <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 600 }}>
               Henüz kayıtlı bir evcil hayvan bulunmuyor.
             </Typography>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               size="large"
               startIcon={<PetsIcon />}
               onClick={handleOpenPetDialog}
@@ -1019,10 +1172,10 @@ const CitizenCampusInfo = () => {
           <Grid container spacing={2.5}>
             {filteredPets.map((pet) => (
               <Grid item xs={12} md={6} key={pet.id}>
-                <Card 
-                  elevation={0} 
-                  sx={{ 
-                    borderRadius: 4, 
+                <Card
+                  elevation={0}
+                  sx={{
+                    borderRadius: 4,
                     border: '1px solid rgba(0,0,0,0.08)',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                     transition: 'all 0.3s ease-in-out',
@@ -1144,16 +1297,14 @@ const CitizenCampusInfo = () => {
                   onChange={handleChange('gender')}
                   onBlur={handleBlur('gender')}
                 >
-                  <FormControlLabel 
-                    value="female" 
-                    control={<Radio />} 
-                    label={<Typography sx={{ fontSize: '1rem' }}>Kadın</Typography>} 
-                  />
-                  <FormControlLabel 
-                    value="male" 
-                    control={<Radio />} 
-                    label={<Typography sx={{ fontSize: '1rem' }}>Erkek</Typography>} 
-                  />
+                  {genderEntries.map(([key, label]) => (
+                    <FormControlLabel
+                      key={key}
+                      value={key}
+                      control={<Radio />}
+                      label={<Typography sx={{ fontSize: '1rem' }}>{label}</Typography>}
+                    />
+                  ))}
                 </RadioGroup>
                 {isRequiredError('gender') && (
                   <Typography variant="body2" color="error" sx={{ mt: 1, fontSize: '0.875rem' }}>
@@ -1174,8 +1325,8 @@ const CitizenCampusInfo = () => {
                     ? !isTcKimlikNoValid(form.tcKimlikNo)
                       ? 'TC kimlik numarası tam olarak 11 haneli rakamlardan oluşmalıdır.'
                       : !isTcKimlikNoUnique(form.tcKimlikNo, editingPersonId)
-                      ? 'Bu TC kimlik numarası zaten kullanılıyor. Lütfen farklı bir numara girin.'
-                      : ''
+                        ? 'Bu TC kimlik numarası zaten kullanılıyor. Lütfen farklı bir numara girin.'
+                        : ''
                     : '11 haneli benzersiz TC kimlik numarası (opsiyonel)'
                 }
                 placeholder="12345678901"
@@ -1220,7 +1371,7 @@ const CitizenCampusInfo = () => {
                 error={isRequiredError('bloodGroup')}
                 helperText={isRequiredError('bloodGroup') ? 'Kan grubu zorunlu bir alandır.' : ''}
               >
-                {BLOOD_GROUPS.map((group) => (
+                {(metadata.bloodGroups || []).map((group) => (
                   <MenuItem key={group} value={group}>
                     {group}
                   </MenuItem>
@@ -1230,7 +1381,7 @@ const CitizenCampusInfo = () => {
               {/* Rahatsızlıklar - healthData tabanlı dropdown */}
               <Autocomplete
                 multiple
-                options={diseases}
+                options={diseaseOptions}
                 getOptionLabel={(option) => option.name}
                 value={selectedDiseases}
                 onChange={(_, newValue) => {
@@ -1289,7 +1440,7 @@ const CitizenCampusInfo = () => {
               {/* Kullandığı İlaçlar - healthData tabanlı dropdown */}
               <Autocomplete
                 multiple
-                options={getAllMedications()}
+                options={medicationOptions}
                 getOptionLabel={(option) => option.name}
                 value={selectedMedications}
                 onChange={(_, newValue) => {
@@ -1348,7 +1499,7 @@ const CitizenCampusInfo = () => {
               {/* Protez / Tıbbi Cihazlar - healthData tabanlı dropdown */}
               <Autocomplete
                 multiple
-                options={prosthetics}
+                options={prostheticOptions}
                 getOptionLabel={(option) => option.name}
                 value={selectedProsthetics}
                 onChange={(_, newValue) => {
@@ -1407,8 +1558,8 @@ const CitizenCampusInfo = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button 
-            onClick={handleCloseDialog} 
+          <Button
+            onClick={handleCloseDialog}
             color="inherit"
             size="large"
             sx={{
@@ -1425,7 +1576,7 @@ const CitizenCampusInfo = () => {
             variant="contained"
             onClick={handleSavePerson}
             size="large"
-            sx={{ 
+            sx={{
               ml: 1,
               px: 3.5,
               py: 1.25,
@@ -1510,8 +1661,8 @@ const CitizenCampusInfo = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button 
-            onClick={handleClosePetDialog} 
+          <Button
+            onClick={handleClosePetDialog}
             color="inherit"
             size="large"
             sx={{
@@ -1528,7 +1679,7 @@ const CitizenCampusInfo = () => {
             variant="contained"
             onClick={handleSavePet}
             size="large"
-            sx={{ 
+            sx={{
               ml: 1,
               px: 3.5,
               py: 1.25,
@@ -1582,11 +1733,11 @@ const CitizenCampusInfo = () => {
                     sx={{
                       borderRadius: 4,
                       boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                      border: (selectedDevice?._id === device._id || selectedDevice?.id === device.id) 
-                        ? '2px solid #1976d2' 
-                        : device.status === 'low_battery' 
-                        ? '2px solid #d32f2f' 
-                        : '1px solid rgba(0,0,0,0.08)',
+                      border: (selectedDevice?._id === device._id || selectedDevice?.id === device.id)
+                        ? '2px solid #1976d2'
+                        : device.status === 'low_battery'
+                          ? '2px solid #d32f2f'
+                          : '1px solid rgba(0,0,0,0.08)',
                       position: 'relative',
                       overflow: 'visible',
                       cursor: 'pointer',
@@ -1702,8 +1853,8 @@ const CitizenCampusInfo = () => {
                             }}
                           >
                             <Stack direction="row" alignItems="center" spacing={1.5}>
-                              <SignalCellularAltIcon 
-                                color={device.signal_quality === 'strong' ? 'success' : device.signal_quality === 'medium' ? 'warning' : 'error'} 
+                              <SignalCellularAltIcon
+                                color={device.signal_quality === 'strong' ? 'success' : device.signal_quality === 'medium' ? 'warning' : 'error'}
                                 sx={{ fontSize: 24 }}
                               />
                               <Box>
@@ -1726,8 +1877,8 @@ const CitizenCampusInfo = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button 
-            onClick={handleCloseDeviceDialog} 
+          <Button
+            onClick={handleCloseDeviceDialog}
             color="inherit"
             size="large"
             sx={{
