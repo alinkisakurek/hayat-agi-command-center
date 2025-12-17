@@ -111,6 +111,53 @@ exports.deleteGateway = async (req, res) => {
   }
 };
 
+// PUT /gateways/:id 
+exports.updateGateway = async (req, res) => {
+  try {
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const { id } = req.params;
+    const { name, address } = req.body;
+
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya güncelleme yetkiniz yok.' });
+    }
+
+
+    if (name) gateway.name = name;
+
+
+    if (address) {
+      gateway.address = {
+        city: address.city || gateway.address.city,
+        district: address.district || gateway.address.district,
+        street: address.street || gateway.address.street,
+        buildingNo: address.buildingNo || gateway.address.buildingNo,
+      };
+      const coords = await getCoordsFromAddress(address);
+
+      if (coords) {
+        gateway.location = coords;
+      }
+    }
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Cihaz başarıyla güncellendi.',
+      gateway
+    });
+
+  } catch (error) {
+    console.error('Update gateway error:', error);
+    res.status(500).json({ message: 'Güncelleme sırasında sunucu hatası oluştu.' });
+  }
+};
+
 exports.addPersonToGateway = async (req, res) => {
   try {
     const { id } = req.params; // Gateway ID'si URL'den gelir

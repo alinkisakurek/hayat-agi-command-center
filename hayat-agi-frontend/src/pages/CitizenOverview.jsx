@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -24,44 +24,67 @@ import RouterIcon from '@mui/icons-material/Router';
 import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
-// Cihaz verileri
-const myGateways = [
-  {
-    id: 1,
-    name: "Ev (Salon)",
-    status: "active",
-    battery: 92,
-    signal: "strong",
-    connectedPhones: 4,
-    lastSeen: "Az önce",
-    address: "Çankaya Mah. 102. Sokak No:5"
-  },
-  {
-    id: 2,
-    name: "İş Yeri (Ofis)",
-    status: "low_battery",
-    battery: 15,
-    signal: "medium",
-    connectedPhones: 12,
-    lastSeen: "10 dakika önce",
-    address: "Teknokent B Blok Kat:2"
-  }
-];
+import { getUserGateways } from '../api/gatewayService';
+
+// Fetch real gateway data for the current user
+const useGateways = () => {
+  const [gateways, setGateways] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const data = await getUserGateways();
+        if (mounted) setGateways(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Gateways fetch error:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  return { gateways, loading };
+};
 
 const CitizenOverview = () => {
+  // Use real gateways
+  const { gateways, loading } = useGateways();
+
   const allDevicesActive = useMemo(() => {
-    return myGateways.every(device => device.status === 'active');
-  }, []);
+    if (!gateways || gateways.length === 0) return false;
+    return gateways.every(device => device.status === 'active');
+  }, [gateways]);
 
   const averageBattery = useMemo(() => {
-    const total = myGateways.reduce((sum, device) => sum + device.battery, 0);
-    return Math.round(total / myGateways.length);
-  }, []);
+    if (!gateways || gateways.length === 0) return 0;
+    const total = gateways.reduce((sum, device) => sum + (device.battery || 0), 0);
+    return Math.round(total / gateways.length);
+  }, [gateways]);
 
   const getBatteryColor = (level) => {
     if (level > 50) return "success";
     if (level > 20) return "warning";
     return "error";
+  };
+
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return 'Bilinmiyor';
+    const date = new Date(lastSeen);
+    if (isNaN(date.getTime())) return String(lastSeen);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Az önce';
+    if (diffMins < 60) return `${diffMins} dakika önce`;
+    if (diffHours < 24) return `${diffHours} saat önce`;
+    return `${diffDays} gün önce`;
   };
 
   return (
@@ -109,21 +132,21 @@ const CitizenOverview = () => {
             )}
           </Avatar>
           <Box>
-            <Typography 
-              variant="h4" 
-              fontWeight="800" 
-              sx={{ 
-                mb: 0.75, 
+            <Typography
+              variant="h4"
+              fontWeight="800"
+              sx={{
+                mb: 0.75,
                 lineHeight: 1.2,
                 fontSize: { xs: '1.375rem', md: '1.75rem' }
               }}
             >
-              {allDevicesActive ? 'Ağa Bağlısınız' : 'Güvenli Değil'}
+              {allDevicesActive ? 'Ağa Bağlısınız' : 'Bağlantı Sorunu Tespit Edildi'}
             </Typography>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                opacity: 0.95, 
+            <Typography
+              variant="h6"
+              sx={{
+                opacity: 0.95,
                 lineHeight: 1.5,
                 fontSize: { xs: '0.9rem', md: '1rem' },
                 fontWeight: 400
@@ -134,11 +157,11 @@ const CitizenOverview = () => {
                 : 'Bazı cihazlarınızda sorun tespit edildi. Lütfen kontrol edin.'}
             </Typography>
             {allDevicesActive && (
-              <Typography 
-                variant="body1" 
-                sx={{ 
-                  opacity: 0.9, 
-                  mt: 0.75, 
+              <Typography
+                variant="body1"
+                sx={{
+                  opacity: 0.9,
+                  mt: 0.75,
                   lineHeight: 1.5,
                   fontSize: { xs: '0.85rem', md: '0.95rem' }
                 }}
@@ -148,25 +171,6 @@ const CitizenOverview = () => {
             )}
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          size="large"
-          sx={{
-            bgcolor: 'rgba(255, 255, 255, 0.25)',
-            color: 'white',
-            fontWeight: '700',
-            px: 3.5,
-            py: 1.25,
-            minWidth: { xs: '100%', sm: 150 },
-            fontSize: '0.95rem',
-            borderRadius: 3,
-            '&:hover': {
-              bgcolor: 'rgba(255, 255, 255, 0.35)'
-            }
-          }}
-        >
-          {allDevicesActive ? 'Çevrimiçi' : 'Sorun Var'}
-        </Button>
       </Paper>
 
       {/* İstatistik Kartları */}
@@ -182,7 +186,7 @@ const CitizenOverview = () => {
                   Toplam Cihaz
                 </Typography>
                 <Typography variant="h4" fontWeight="800" color="primary.main" sx={{ fontSize: '1.75rem' }}>
-                  {myGateways.length}
+                  {loading ? '—' : gateways.length}
                 </Typography>
               </Box>
             </Stack>
@@ -216,7 +220,7 @@ const CitizenOverview = () => {
                   Bağlı Cihazlar
                 </Typography>
                 <Typography variant="h4" fontWeight="800" color="info.main" sx={{ fontSize: '1.75rem' }}>
-                  {myGateways.reduce((sum, d) => sum + d.connectedPhones, 0)}
+                  {gateways.reduce((sum, d) => sum + (d.connected_devices || 0), 0)}
                 </Typography>
               </Box>
             </Stack>
@@ -230,8 +234,8 @@ const CitizenOverview = () => {
           Cihazlarım
         </Typography>
         <Grid container spacing={2.5}>
-          {myGateways.map((device) => (
-            <Grid item xs={12} md={6} key={device.id}>
+          {(loading ? [] : gateways).map((device) => (
+            <Grid item xs={12} md={6} key={device._id || device.id}>
               <Card
                 elevation={0}
                 sx={{
@@ -249,7 +253,7 @@ const CitizenOverview = () => {
                 }}
               >
                 <Chip
-                  label={device.status === 'active' ? 'Aktif & Hazır' : 'Pil Düşük!'}
+                  label={device.status === 'active' ? 'Aktif & Hazır' : 'Aktif Değil'}
                   color={device.status === 'active' ? 'success' : 'error'}
                   icon={device.status === 'active' ? <CheckCircleIcon /> : <WarningIcon />}
                   sx={{
@@ -280,7 +284,7 @@ const CitizenOverview = () => {
                         {device.name}
                       </Typography>
                       <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.9rem' }}>
-                        Son görülme: {device.lastSeen}
+                        Son görülme: {formatLastSeen(device.last_seen || device.lastSeen)}
                       </Typography>
                     </Box>
                   </Stack>
@@ -329,10 +333,10 @@ const CitizenOverview = () => {
                     </Grid>
 
                     <Grid item xs={12}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1.5, 
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
                         p: 2,
                         bgcolor: 'background.default',
                         borderRadius: 2

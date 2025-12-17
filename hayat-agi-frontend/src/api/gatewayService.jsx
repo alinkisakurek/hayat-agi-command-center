@@ -22,11 +22,6 @@ export const createGateway = async (gatewayData) => {
     return response.data;
 };
 
-// 4. Cihaz Güncelle (Backend'e eklediğimiz update fonksiyonu için)
-export const updateGateway = async (id, gatewayData) => {
-    const response = await api.put(`${API_URL}/${id}`, gatewayData);
-    return response.data;
-};
 
 // 5. Cihaz Sil
 export const deleteGateway = async (id) => {
@@ -55,5 +50,11 @@ export const addPetToGateway = async (gatewayId, petData) => {
 // 9. Cihaz'tan evcil hayvan sil
 export const removePetFromGateway = async (gatewayId, petId) => {
     const response = await api.delete(`${API_URL}/${gatewayId}/pets/${petId}`);
+    return response.data;
+};
+
+// src/api/gatewayService.jsx içine:
+export const updateGateway = async (id, gatewayData) => {
+    const response = await api.put(`/gateways/${id}`, gatewayData); // Backend rotan PUT /gateways/:id olmalı
     return response.data;
 };

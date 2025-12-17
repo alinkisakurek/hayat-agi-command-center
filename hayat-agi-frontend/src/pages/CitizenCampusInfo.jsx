@@ -633,27 +633,6 @@ const CitizenCampusInfo = () => {
         </Typography>
       </Box>
 
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 3,
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          background: 'linear-gradient(135deg, #f5f9ff 0%, #ffffff 100%)'
-        }}
-      >
-        <Typography variant="h5" fontWeight="700" sx={{ mb: 1.5, fontSize: { xs: '1.125rem', md: '1.375rem' } }}>
-          Yerleşke Özeti
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
-          Yerleşkeniz ile ilgili temel bilgiler bu alanda görüntülenecektir. Adres,
-          kat sayısı, toplam daire/oda bilgisi gibi veriler burada özetlenebilir.
-          (Bu alan şu anda örnek amaçlı yer tutucu metin içermektedir.)
-        </Typography>
-      </Paper>
-
       {/* Cihaz Seçimi Bölümü */}
       <Box sx={{ mb: 4 }}>
         <Paper
