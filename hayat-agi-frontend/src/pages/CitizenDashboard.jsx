@@ -157,10 +157,10 @@ const CitizenDashboard = () => {
   };
 
   const drawer = (
-    <Box sx={{ 
-      minHeight: '100%', 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <Box sx={{
+      minHeight: '100%',
+      display: 'flex',
+      flexDirection: 'column',
       bgcolor: 'background.paper',
       justifyContent: 'space-between'
     }}>
@@ -191,20 +191,20 @@ const CitizenDashboard = () => {
             {getUserInitials()}
           </Avatar>
           <Box sx={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-            <Typography 
-              variant="subtitle2" 
-              fontWeight="bold" 
+            <Typography
+              variant="subtitle2"
+              fontWeight="bold"
               noWrap
-              sx={{ 
+              sx={{
                 color: 'text.primary',
                 mb: 0.25
               }}
             >
               {user?.name || 'Kullanıcı'}
             </Typography>
-            <Typography 
-              variant="caption" 
-              sx={{ 
+            <Typography
+              variant="caption"
+              sx={{
                 color: 'text.secondary',
                 display: 'block'
               }}
@@ -283,11 +283,11 @@ const CitizenDashboard = () => {
       </List>
 
       {/* Sorun Bildir - Ayarlar'ın Altında */}
-      <Box sx={{ 
-        px: 2, 
-        pb: 2, 
-        pt: 1.5, 
-        borderTop: '1px solid', 
+      <Box sx={{
+        px: 2,
+        pb: 2,
+        pt: 1.5,
+        borderTop: '1px solid',
         borderColor: 'divider',
         flexShrink: 0,
         bgcolor: 'background.paper'
@@ -300,7 +300,7 @@ const CitizenDashboard = () => {
               py: 1.25,
               px: 2,
               color: 'error.main',
-              '&:hover': { 
+              '&:hover': {
                 bgcolor: alpha('#d32f2f', 0.1),
               },
             }}
@@ -386,7 +386,7 @@ const CitizenDashboard = () => {
           {/* Sağ Taraf: Bildirim + Kullanıcı Avatarı */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Tooltip title="Bildirimler">
-              <IconButton 
+              <IconButton
                 sx={{ color: 'inherit' }}
                 onClick={handleOpenNotifications}
               >
@@ -444,26 +444,26 @@ const CitizenDashboard = () => {
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <Typography 
-                            variant="subtitle2" 
+                          <Typography
+                            variant="subtitle2"
                             fontWeight={notification.read ? 400 : 700}
                             sx={{ fontSize: '0.875rem' }}
                           >
                             {notification.title}
                           </Typography>
                           {!notification.read && (
-                            <Chip 
-                              label="Yeni" 
-                              size="small" 
+                            <Chip
+                              label="Yeni"
+                              size="small"
                               color="primary"
                               sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
                             />
                           )}
                         </Box>
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           color="text.secondary"
-                          sx={{ 
+                          sx={{
                             fontSize: '0.8rem',
                             mb: 0.5,
                             overflow: 'hidden',
@@ -535,7 +535,7 @@ const CitizenDashboard = () => {
                 }
               }}
             >
-              <MenuItem onClick={handleCloseUserMenu}>Profilim</MenuItem>
+
               <MenuItem onClick={handleLogout} sx={{ color: 'error.main', fontWeight: 'bold' }}>
                 <ListItemIcon>
                   <LogoutIcon fontSize="small" color="error" />

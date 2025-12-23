@@ -37,15 +37,49 @@ exports.createGateway = async (req, res) => {
 
     if (!name || !serialNumber || !address) {
       return res.status(400).json({
-        message: 'Cihaz adı, seri numarası ve adres zorunludur.'
+        message: 'Cihaz adı, seri numarası ve adres bilgileri zorunludur.'
       });
     }
 
-    const coords = await getCoordsFromAddress(address);
+    // Sıralama Önemli: Geocoding Özelden -> Genele
+    let addressSearchParts = [];
+
+    if (address.street) {
+      let streetPart = address.street.trim();
+      if (address.buildingNo) {
+        streetPart += ` ${address.buildingNo.trim()}`;
+      }
+      addressSearchParts.push(streetPart);
+    }
+
+    if (address.neighborhood) {
+      addressSearchParts.push(address.neighborhood.trim());
+    }
+
+
+    if (address.district) {
+      addressSearchParts.push(address.district.trim());
+    }
+
+
+    if (address.province) {
+      addressSearchParts.push(address.province.trim());
+    }
+
+
+    addressSearchParts.push('Türkiye');
+
+
+    const fullAddressQuery = addressSearchParts.join(', ');
+
+    console.log('📍 Konum aranıyor:', fullAddressQuery);
+
+
+    const coords = await getCoordsFromAddress(fullAddressQuery);
 
     if (!coords) {
       return res.status(400).json({
-        message: 'Adres çözümlenemedi. Lütfen geçerli bir adres giriniz.'
+        message: 'Adres haritada bulunamadı. Lütfen mahalle ve sokak ismini kontrol ediniz.'
       });
     }
 
@@ -53,11 +87,21 @@ exports.createGateway = async (req, res) => {
       return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
     }
 
+
     const newGateway = new Gateway({
       owner: req.user._id,
       name,
       serialNumber,
-      address,
+
+      address: {
+        street: address.street,
+        buildingNo: address.buildingNo,
+        doorNo: address.doorNo,
+        neighborhood: address.neighborhood,
+        district: address.district,
+        province: address.province,
+        postalCode: address.postalCode
+      },
       location: coords,
       status: 'inactive',
       battery: 100,
@@ -108,6 +152,53 @@ exports.deleteGateway = async (req, res) => {
     res.json({ message: 'Gateway silindi.' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// PUT /gateways/:id 
+exports.updateGateway = async (req, res) => {
+  try {
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const { id } = req.params;
+    const { name, address } = req.body;
+
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya güncelleme yetkiniz yok.' });
+    }
+
+
+    if (name) gateway.name = name;
+
+
+    if (address) {
+      gateway.address = {
+        city: address.city || gateway.address.city,
+        district: address.district || gateway.address.district,
+        street: address.street || gateway.address.street,
+        buildingNo: address.buildingNo || gateway.address.buildingNo,
+      };
+      const coords = await getCoordsFromAddress(address);
+
+      if (coords) {
+        gateway.location = coords;
+      }
+    }
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Cihaz başarıyla güncellendi.',
+      gateway
+    });
+
+  } catch (error) {
+    console.error('Update gateway error:', error);
+    res.status(500).json({ message: 'Güncelleme sırasında sunucu hatası oluştu.' });
   }
 };
 

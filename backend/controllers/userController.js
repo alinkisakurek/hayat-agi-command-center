@@ -6,8 +6,17 @@ const User = require('../models/User');
 async function register(req, res, next) {
   try {
     const { name, surname, tcNumber, email, password } = req.body;
+    const normalizedEmail = (email || '').toLowerCase();
 
-    const existsEmail = await User.findOne({ email });
+    if (!name || !surname || !email || !password || !tcNumber) {
+      return res.status(400).json({ message: 'Ad, soyad, e-posta, şifre ve TC Kimlik zorunludur' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Şifre en az 6 karakter olmalıdır.' });
+    }
+
+    const existsEmail = await User.findOne({ email: normalizedEmail });
     if (existsEmail) {
       return res.status(400).json({ message: 'Email kayıtlı.' });
     }
@@ -17,15 +26,13 @@ async function register(req, res, next) {
       return res.status(400).json({ message: 'TC Kimlik Numarası zaten kayıtlı.' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
+    // Do not hash here — the model's pre-save hook will hash the password.
     const user = await User.create({
       name,
       surname,
       tcNumber,
-      email,
-      password: hashedPassword
+      email: normalizedEmail,
+      password
     });
 
     res.status(201).json({
@@ -44,7 +51,7 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: (email || '').toLowerCase() });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ message: 'Invalid credentials' });

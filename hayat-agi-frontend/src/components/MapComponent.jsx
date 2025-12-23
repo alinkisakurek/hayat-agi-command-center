@@ -3,11 +3,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-le
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapComponent.css';
-import { 
-    Box, 
-    Typography, 
-    CircularProgress, 
-    Alert, 
+import {
+    Box,
+    Typography,
+    CircularProgress,
+    Alert,
     Stack,
     IconButton,
     Tooltip,
@@ -309,80 +309,80 @@ const MapComponent = ({ gateways = [], selectedGateway, onGatewayClick, onMarker
                             }, 500);
                         }}
                     >
-                    <TileLayer
-                        attribution={getTileLayerAttribution()}
-                        url={getTileLayerUrl()}
-                        key={mapType} // Harita tipi değiştiğinde yeniden render et
-                    />
-
-                    {/* Seçili gateway'i merkeze al */}
-                    {selectedGateway?.location && (
-                        <MapUpdater
-                            center={[selectedGateway.location.lat, selectedGateway.location.lng]}
-                            zoom={15}
+                        <TileLayer
+                            attribution={getTileLayerAttribution()}
+                            url={getTileLayerUrl()}
+                            key={mapType} // Harita tipi değiştiğinde yeniden render et
                         />
-                    )}
 
-                    {/* Gateway marker'ları */}
-                    {validGateways.map((gateway) => {
-                        const isSelected = selectedGateway?._id === gateway._id;
-                        const icon = createCustomIcon(gateway.status, gateway.battery || 0);
+                        {/* Seçili gateway'i merkeze al */}
+                        {selectedGateway?.location && (
+                            <MapUpdater
+                                center={[selectedGateway.location.lat, selectedGateway.location.lng]}
+                                zoom={15}
+                            />
+                        )}
 
-                        // Key'e status ve battery ekle ki değişikliklerde icon güncellensin
-                        const markerKey = `${gateway._id}-${gateway.status}-${gateway.battery}`;
+                        {/* Gateway marker'ları */}
+                        {validGateways.map((gateway) => {
+                            const isSelected = selectedGateway?._id === gateway._id;
+                            const icon = createCustomIcon(gateway.status, gateway.battery || 0);
 
-                        return (
-                            <Marker
-                                key={markerKey}
-                                position={[gateway.location.lat, gateway.location.lng]}
-                                icon={icon}
-                                eventHandlers={{
-                                    click: () => {
-                                        if (onMarkerClick) {
-                                            onMarkerClick(gateway);
-                                        } else if (onGatewayClick) {
-                                            onGatewayClick(gateway);
-                                        }
-                                    },
-                                }}
-                            >
-                                <Popup>
-                                    <Box sx={{ minWidth: 180, p: 0.5 }}>
-                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                                            <RouterIcon sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
-                                            <Typography variant="subtitle2" fontWeight="bold">
-                                                {gateway.name}
-                                            </Typography>
-                                        </Stack>
-                                        <Stack spacing={0.5}>
-                                            <Chip
-                                                label={gateway.status === 'active' ? 'Aktif' :
-                                                    gateway.status === 'inactive' ? 'Pasif' : 'Düşük Pil'}
-                                                color={gateway.status === 'active' ? 'success' :
-                                                    gateway.status === 'inactive' ? 'default' : 'warning'}
-                                                size="small"
-                                                sx={{ width: 'fit-content', height: 22 }}
-                                            />
-                                            <Stack direction="row" spacing={1} alignItems="center">
-                                                <BatteryStdIcon sx={{ fontSize: '1rem', color: getBatteryColor(gateway.battery) }} />
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Batarya: %{gateway.battery || 0}
+                            // Key'e status ve battery ekle ki değişikliklerde icon güncellensin
+                            const markerKey = `${gateway._id}-${gateway.status}-${gateway.battery}`;
+
+                            return (
+                                <Marker
+                                    key={markerKey}
+                                    position={[gateway.location.lat, gateway.location.lng]}
+                                    icon={icon}
+                                    eventHandlers={{
+                                        click: () => {
+                                            if (onMarkerClick) {
+                                                onMarkerClick(gateway);
+                                            } else if (onGatewayClick) {
+                                                onGatewayClick(gateway);
+                                            }
+                                        },
+                                    }}
+                                >
+                                    <Popup>
+                                        <Box sx={{ minWidth: 180, p: 0.5 }}>
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                                                <RouterIcon sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
+                                                <Typography variant="subtitle2" fontWeight="bold">
+                                                    {gateway.name}
                                                 </Typography>
                                             </Stack>
-                                            {gateway.address && (gateway.address.street || gateway.address.city) && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                    📍 {gateway.address.street || ''} {gateway.address.buildingNo || ''}, {gateway.address.city || ''}
+                                            <Stack spacing={0.5}>
+                                                <Chip
+                                                    label={gateway.status === 'active' ? 'Aktif' :
+                                                        gateway.status === 'inactive' ? 'Pasif' : 'Düşük Pil'}
+                                                    color={gateway.status === 'active' ? 'success' :
+                                                        gateway.status === 'inactive' ? 'default' : 'warning'}
+                                                    size="small"
+                                                    sx={{ width: 'fit-content', height: 22 }}
+                                                />
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <BatteryStdIcon sx={{ fontSize: '1rem', color: getBatteryColor(gateway.battery) }} />
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Batarya: %{gateway.battery || 0}
+                                                    </Typography>
+                                                </Stack>
+                                                {gateway.address && (gateway.address.street || gateway.address.city) && (
+                                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                        📍 {gateway.address.street || ''} {gateway.address.buildingNo || ''}, {gateway.address.city || ''}
+                                                    </Typography>
+                                                )}
+                                                <Typography variant="caption" color="primary" sx={{ mt: 0.5, fontWeight: 600 }}>
+                                                    Detaylar için tıklayın →
                                                 </Typography>
-                                            )}
-                                            <Typography variant="caption" color="primary" sx={{ mt: 0.5, fontWeight: 600 }}>
-                                                Detaylar için tıklayın →
-                                            </Typography>
-                                        </Stack>
-                                    </Box>
-                                </Popup>
-                            </Marker>
-                        );
-                    })}
+                                            </Stack>
+                                        </Box>
+                                    </Popup>
+                                </Marker>
+                            );
+                        })}
                     </MapContainer>
                 )}
                 {!isMounted && (

@@ -38,7 +38,6 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 const drawerWidth = 280;
 const menuItems = [
-  { text: 'Genel Bakış', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Canlı Harita', icon: <MapIcon />, path: '/dashboard/harita' },
   { text: 'Gateway Listesi', icon: <RouterIcon />, path: '/dashboard/gateways' },
   { text: 'Bildirilen Sorunlar', icon: <BugReportIcon />, path: '/dashboard/sorunlar' }
@@ -203,16 +202,7 @@ const Dashboard = () => {
         })}
       </List>
 
-      {/* 4. Alt Menü (Ayarlar) */}
-      <Box sx={{ mt: 'auto', px: 2, pb: 3 }}>
-        <Typography variant="caption" sx={{ ml: 2, mb: 1, display: 'block', fontWeight: 'bold', color: 'text.secondary' }}>
-          DİĞER
-        </Typography>
-        <ListItemButton sx={{ borderRadius: 3, color: 'text.secondary' }}>
-          <ListItemIcon sx={{ color: 'text.secondary', minWidth: 40 }}><SettingsIcon /></ListItemIcon>
-          <ListItemText primary="Sistem Ayarları" primaryTypographyProps={{ fontWeight: '500', fontSize: '0.95rem' }} />
-        </ListItemButton>
-      </Box>
+
     </Box>
   );
 
@@ -253,7 +243,7 @@ const Dashboard = () => {
           {/* Sağ İkonlar */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Tooltip title="Bildirimler">
-              <IconButton 
+              <IconButton
                 sx={{ bgcolor: 'background.paper', boxShadow: 1 }}
                 onClick={handleOpenNotifications}
               >
@@ -309,26 +299,26 @@ const Dashboard = () => {
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <Typography 
-                            variant="subtitle2" 
+                          <Typography
+                            variant="subtitle2"
                             fontWeight={notification.read ? 400 : 700}
                             sx={{ fontSize: '0.875rem' }}
                           >
                             {notification.title}
                           </Typography>
                           {!notification.read && (
-                            <Chip 
-                              label="Yeni" 
-                              size="small" 
+                            <Chip
+                              label="Yeni"
+                              size="small"
                               color="primary"
                               sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
                             />
                           )}
                         </Box>
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           color="text.secondary"
-                          sx={{ 
+                          sx={{
                             fontSize: '0.8rem',
                             mb: 0.5,
                             overflow: 'hidden',
@@ -393,9 +383,7 @@ const Dashboard = () => {
                 }
               }}
             >
-              <MenuItem onClick={handleCloseUserMenu} sx={{ minWidth: 150 }}>
-                Profilim
-              </MenuItem>
+
               <MenuItem onClick={handleLogout} sx={{ color: 'error.main', fontWeight: 'bold' }}>
                 <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
                 Çıkış Yap

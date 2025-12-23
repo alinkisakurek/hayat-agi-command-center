@@ -6,6 +6,8 @@ const { protect } = require('../middleware/authMiddleware');
 router.get('/', protect, gatewayController.getGateways);
 router.get('/user', protect, gatewayController.getUserGateways);
 
+router.put('/:id', protect, gatewayController.updateGateway);
+
 router.post('/', protect, gatewayController.createGateway);
 
 router.delete('/:id', protect, gatewayController.deleteGateway);
