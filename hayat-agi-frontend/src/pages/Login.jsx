@@ -18,6 +18,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../constants/routes';
+import { login as authLogin } from '../services/authService';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -53,36 +54,27 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      const data = await authLogin(email, password);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      console.log("Giriş Başarılı:", data.user);
 
-      const data = await response.json();
+      // AuthContext'i güncelle
+      refreshUser();
 
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        console.log("Giriş Başarılı:", data.user);
-
-        // AuthContext'i güncelle
-        refreshUser();
-
-        // Role'e göre yönlendirme
-        if (data.user.role === 'admin' || data.user.role === 'administrator') {
-          navigate(ROUTES.DASHBOARD);
-        } else {
-          // Vatandaş için panel'e yönlendir
-          navigate('/panel');
-        }
+      // Role'e göre yönlendirme
+      if (data.user.role === 'admin' || data.user.role === 'administrator') {
+        navigate(ROUTES.DASHBOARD);
       } else {
-        setError(data.error || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+        // Vatandaş için panel'e yönlendir
+        navigate('/panel');
       }
+
 
     } catch (err) {
       console.error("Login Hatası:", err);
-      setError('Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.');
+      const errorMessage = err.message || err.error || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

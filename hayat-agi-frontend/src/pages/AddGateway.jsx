@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Container, 
-    TextField, 
-    Button, 
-    Typography, 
-    Alert, 
+import {
+    Container,
+    TextField,
+    Button,
+    Typography,
+    Alert,
     Stack,
     Box,
     CircularProgress,
@@ -13,49 +13,52 @@ import {
     Tab
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { createGateway } from '../api/gatewayService';
+import { createGateway } from '../api/gatewayService'; // API servisini import et
 import SearchIcon from '@mui/icons-material/Search';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 
-// Leaflet default icon fix
+// Leaflet ikon hatasını düzelten kod bloğu
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
 });
 
+// Haritada tıklanan yeri alan bileşen
 const LocationPicker = ({ position, onPositionChange }) => {
-  useMapEvents({
-    click(e) {
-      onPositionChange({ lat: e.latlng.lat, lng: e.latlng.lng });
-    }
-  });
-  return position ? <Marker position={[position.lat, position.lng]} /> : null;
+    useMapEvents({
+        click(e) {
+            onPositionChange({ lat: e.latlng.lat, lng: e.latlng.lng });
+        }
+    });
+    return position ? <Marker position={[position.lat, position.lng]} /> : null;
 };
 
 const AddGateway = () => {
     const navigate = useNavigate();
 
+    // FORM STATE - Backend ile %100 Uyumlu İsimlendirme
     const [formData, setFormData] = useState({
         name: '',
         serialNumber: '',
-        street: '',
-        buildingNo: '',
-        doorNo: '',
-        district: '',
-        city: '',
-        province: '',
+        street: '',        // Cadde/Sokak
+        buildingNo: '',    // Bina No
+        doorNo: '',        // Kapı No (Yeni)
+        neighborhood: '',  // Mahalle (Yeni)
+        district: '',      // İlçe (Eskiden city diyorduk, düzelttik)
+        province: '',      // İl
         postalCode: ''
     });
+
     const [error, setError] = useState('');
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [geocodingError, setGeocodingError] = useState('');
     const [location, setLocation] = useState(null); // { lat, lng }
-    const [locationMethod, setLocationMethod] = useState(0); // 0: Haritadan seç, 1: Adres gir
+    const [locationMethod, setLocationMethod] = useState(1); // Varsayılan: Adres Gir (1)
     const [resolvedAddress, setResolvedAddress] = useState('');
     const [isMounted, setIsMounted] = useState(false);
 
@@ -70,10 +73,11 @@ const AddGateway = () => {
         setResolvedAddress('');
     };
 
-    // Adres geocoding (adres -> koordinat)
+    // 1. ADRES -> KOORDİNAT BULMA (Geocoding)
     const handleGeocodeAddress = async () => {
-        if (!formData.street.trim() || !formData.province.trim()) {
-            setGeocodingError('Lütfen en azından sokak ve il bilgilerini girin.');
+        // En azından Sokak, İlçe ve İl girilmeli
+        if (!formData.street.trim() || !formData.district.trim() || !formData.province.trim()) {
+            setGeocodingError('Lütfen doğru sonuç için Sokak, İlçe ve İl bilgilerini girin.');
             return;
         }
 
@@ -81,40 +85,42 @@ const AddGateway = () => {
         setGeocodingError('');
 
         try {
-            // Adres string'ini oluştur - Türkiye için optimize edilmiş format
+            // Arama metnini oluştur: "Sokak No, Mahalle, İlçe, İl, Türkiye"
             let addressParts = [];
-            
-            // Sokak ve bina no
+
+            // Sokak + Bina No
             if (formData.street) {
-                if (formData.buildingNo) {
-                    addressParts.push(`${formData.street} ${formData.buildingNo}`);
-                } else {
-                    addressParts.push(formData.street);
-                }
+                let str = formData.street;
+                if (formData.buildingNo) str += ` ${formData.buildingNo}`;
+                addressParts.push(str);
             }
-            
-            // İlçe (city)
-            if (formData.city) {
-                addressParts.push(formData.city);
+
+            // Mahalle (Konum bulmada çok etkili)
+            if (formData.neighborhood) {
+                addressParts.push(formData.neighborhood);
             }
-            
-            // İl (province)
+
+            // İlçe
+            if (formData.district) {
+                addressParts.push(formData.district);
+            }
+
+            // İl
             if (formData.province) {
                 addressParts.push(formData.province);
             }
-            
-            // Türkiye
+
             addressParts.push('Türkiye');
-            
+
             const addressString = addressParts.join(', ');
-            console.log('Aranan adres:', addressString);
-            
-            // Nominatim API (OpenStreetMap geocoding)
-            // Rate limiting için 1 saniye bekle
+            console.log('🔍 Aranan adres:', addressString);
+
+            // Nominatim API İsteği
+            // (1 saniye bekleme - Rate Limit için)
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressString)}&limit=5&countrycodes=tr&addressdetails=1`,
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressString)}&limit=1&countrycodes=tr&addressdetails=1`,
                 {
                     headers: {
                         'User-Agent': 'HayatAgiApp/1.0',
@@ -123,64 +129,57 @@ const AddGateway = () => {
                 }
             );
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const data = await response.json();
-            console.log('Geocoding sonucu:', data);
 
             if (data && data.length > 0) {
-                // En yüksek önem skoruna sahip sonucu al
                 const result = data[0];
                 const lat = parseFloat(result.lat);
                 const lng = parseFloat(result.lon);
                 setLocation({ lat, lng });
                 setResolvedAddress(result.display_name || addressString);
-                setGeocodingError('');
             } else {
-                setGeocodingError(`Adres bulunamadı: "${addressString}". Lütfen adresi kontrol edin. Örnek: "Atatürk Caddesi, Kadıköy, İstanbul, Türkiye"`);
+                setGeocodingError(`Adres bulunamadı. Lütfen mahalle veya sokak ismini kontrol edip tekrar deneyin.`);
             }
         } catch (error) {
             console.error('Geocoding hatası:', error);
-            setGeocodingError(`Adres arama sırasında bir hata oluştu: ${error.message}. Lütfen tekrar deneyin.`);
+            setGeocodingError('Adres servisine bağlanılamadı.');
         } finally {
             setIsGeocoding(false);
         }
     };
 
+    // 2. KOORDİNAT -> ADRES ÇÖZME (Reverse Geocoding) - Haritadan seçince çalışır
     const handleReverseGeocode = async (lat, lng) => {
         setGeocodingError('');
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=tr&addressdetails=1`;
             const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'HayatAgiApp/1.0',
-                    'Accept-Language': 'tr,en'
-                }
+                headers: { 'User-Agent': 'HayatAgiApp/1.0' }
             });
             const data = await response.json();
+
             if (data && data.address) {
                 const addr = data.address;
+                // Gelen veriyi form alanlarına akıllıca dağıt
                 setFormData((prev) => ({
                     ...prev,
                     street: addr.road || addr.pedestrian || prev.street,
                     buildingNo: addr.house_number || prev.buildingNo,
-                    district: addr.suburb || addr.neighbourhood || addr.village || prev.district,
-                    city: addr.town || addr.city_district || addr.city || addr.county || prev.city,
-                    province: addr.state || prev.province,
+                    neighborhood: addr.suburb || addr.neighbourhood || addr.quarter || prev.neighborhood,
+                    district: addr.town || addr.city_district || addr.county || prev.district,
+                    province: addr.province || addr.state || addr.city || prev.province,
                     postalCode: addr.postcode || prev.postalCode
                 }));
                 setResolvedAddress(data.display_name || '');
-            } else {
-                setResolvedAddress('');
             }
         } catch (error) {
             console.error('Reverse geocoding hatası:', error);
-            setGeocodingError('Seçilen konumun adresi alınırken bir hata oluştu.');
         }
     };
 
+    // 3. KAYDETME İŞLEMİ
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -190,11 +189,12 @@ const AddGateway = () => {
         }
 
         if (!location) {
-            setError('Lütfen önce "Konumu Bul" butonuna tıklayarak adresin koordinatlarını alın.');
+            setError('Lütfen önce "Konumu Bul" butonuna tıklayın veya haritadan bir yer seçin.');
             return;
         }
 
         try {
+            // Backend'e gidecek veri paketi
             const gatewayData = {
                 name: formData.name.trim(),
                 serialNumber: formData.serialNumber.trim(),
@@ -203,18 +203,23 @@ const AddGateway = () => {
                     lat: location.lat,
                     lng: location.lng
                 },
+                // Adres objesi (Schema ile birebir aynı)
                 address: {
                     street: formData.street.trim(),
                     buildingNo: formData.buildingNo.trim(),
                     doorNo: formData.doorNo.trim(),
-                    district: formData.district.trim(),
-                    city: formData.city.trim(),
-                    province: formData.province.trim(),
+                    neighborhood: formData.neighborhood.trim(), // Mahalle
+                    district: formData.district.trim(),         // İlçe
+                    province: formData.province.trim(),         // İl
                     postalCode: formData.postalCode.trim()
                 }
             };
+
             await createGateway(gatewayData);
+
+            // Başarılıysa listeye dön
             navigate('/dashboard/gateways');
+
         } catch (err) {
             console.error('Gateway kaydetme hatası:', err);
             const errorMessage = err?.response?.data?.message || err?.message || 'Kayıt sırasında bir hata oluştu.';
@@ -224,237 +229,152 @@ const AddGateway = () => {
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
-            <Typography variant="h4" fontWeight="700" sx={{ mb: 3, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
+            <Typography variant="h4" fontWeight="700" sx={{ mb: 3 }}>
                 Yeni Gateway Ekle
             </Typography>
 
-            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
-            {geocodingError && <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>{geocodingError}</Alert>}
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {geocodingError && <Alert severity="warning" sx={{ mb: 2 }}>{geocodingError}</Alert>}
 
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+            <Paper sx={{ p: 3, borderRadius: 3 }}>
                 <form onSubmit={handleSubmit}>
                     <Stack spacing={3}>
-                        {/* Cihaz Bilgileri */}
+
+                        {/* CİHAZ BİLGİLERİ */}
                         <Box>
-                            <Typography variant="h6" fontWeight="700" sx={{ mb: 2, fontSize: '1.125rem' }}>
-                                Cihaz Bilgileri
-                            </Typography>
-                            <Stack spacing={2.5}>
+                            <Typography variant="h6" sx={{ mb: 2 }}>Cihaz Bilgileri</Typography>
+                            <Stack spacing={2}>
                                 <TextField
                                     label="Cihaz Adı"
                                     name="name"
-                                    fullWidth
-                                    required
+                                    fullWidth required
                                     value={formData.name}
                                     onChange={handleChange}
-                                    sx={{ borderRadius: 2 }}
                                 />
                                 <TextField
                                     label="Seri Numarası"
                                     name="serialNumber"
-                                    fullWidth
-                                    required
+                                    fullWidth required
                                     value={formData.serialNumber}
                                     onChange={handleChange}
-                                    placeholder="Örn: GW-2024-001"
-                                    sx={{ borderRadius: 2 }}
                                 />
                             </Stack>
                         </Box>
 
-                        {/* Konum / Adres Bilgileri */}
+                        {/* KONUM SEÇİMİ */}
                         <Box>
-                            <Tabs
-                                value={locationMethod}
-                                onChange={(_, value) => {
-                                    setLocationMethod(value);
-                                    setGeocodingError('');
-                                }}
-                                sx={{ mb: 2 }}
-                            >
+                            <Tabs value={locationMethod} onChange={(_, v) => setLocationMethod(v)} sx={{ mb: 2 }}>
                                 <Tab label="Haritadan Seç" />
                                 <Tab label="Adres Gir" />
                             </Tabs>
 
+                            {/* HARİTA MODU */}
                             {locationMethod === 0 && (
-                                <Stack spacing={2.5}>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Harita üzerinde bir noktaya tıklayarak gateway cihazının konumunu belirleyin.
-                                    </Typography>
+                                <Stack spacing={2}>
+                                    <Alert severity="info">Harita üzerinde cihazın bulunduğu yere tıklayın.</Alert>
                                     {isMounted && (
-                                        <Box
-                                            sx={{
-                                                borderRadius: 2,
-                                                border: '1px solid rgba(0,0,0,0.12)',
-                                                overflow: 'hidden',
-                                                height: 360
-                                            }}
-                                        >
-                                            <MapContainer
-                                                center={[41.0082, 28.9784]}
-                                                zoom={12}
-                                                style={{ height: '100%', width: '100%' }}
-                                                scrollWheelZoom
-                                            >
-                                                <TileLayer
-                                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                                />
-                                                <LocationPicker
-                                                    position={location}
-                                                    onPositionChange={(pos) => {
-                                                        setLocation(pos);
-                                                        handleReverseGeocode(pos.lat, pos.lng);
-                                                    }}
-                                                />
+                                        <Box sx={{ height: 400, borderRadius: 2, overflow: 'hidden', border: '1px solid #ddd' }}>
+                                            <MapContainer center={[41.0082, 28.9784]} zoom={11} style={{ height: '100%' }}>
+                                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                <LocationPicker position={location} onPositionChange={(pos) => {
+                                                    setLocation(pos);
+                                                    handleReverseGeocode(pos.lat, pos.lng);
+                                                }} />
                                             </MapContainer>
                                         </Box>
                                     )}
-                                    {location && (
-                                        <Alert severity="success" sx={{ borderRadius: 2 }}>
-                                            Seçilen konum: Lat {location.lat.toFixed(6)}, Lng{' '}
-                                            {location.lng.toFixed(6)}
-                                        </Alert>
-                                    )}
-                                    {resolvedAddress && (
-                                        <Alert
-                                            severity="info"
-                                            icon={<LocationOnIcon />}
-                                            sx={{ borderRadius: 2 }}
-                                        >
-                                            Seçilen adres: {resolvedAddress}
-                                        </Alert>
-                                    )}
-                                    {geocodingError && (
-                                        <Alert severity="error" sx={{ borderRadius: 2 }}>
-                                            {geocodingError}
-                                        </Alert>
-                                    )}
                                 </Stack>
                             )}
 
+                            {/* ADRES GİRME MODU - Form Alanları */}
                             {locationMethod === 1 && (
-                            <Stack spacing={2.5}>
-                                <TextField
-                                    label="Sokak/Cadde"
-                                    name="street"
-                                    fullWidth
-                                    required
-                                    value={formData.street}
-                                    onChange={handleChange}
-                                    placeholder="Örn: Atatürk Caddesi veya İstiklal Caddesi"
-                                    sx={{ borderRadius: 2 }}
-                                />
-                                <Stack direction="row" spacing={2}>
+                                <Stack spacing={2}>
                                     <TextField
-                                        label="Bina No"
-                                        name="buildingNo"
-                                        fullWidth
-                                        value={formData.buildingNo}
+                                        label="Sokak / Cadde"
+                                        name="street"
+                                        fullWidth required
+                                        value={formData.street}
                                         onChange={handleChange}
-                                        placeholder="Örn: 123"
-                                        sx={{ borderRadius: 2 }}
+                                        placeholder="Örn: Atatürk Caddesi"
                                     />
+
+                                    <Stack direction="row" spacing={2}>
+                                        <TextField
+                                            label="Bina No"
+                                            name="buildingNo"
+                                            fullWidth
+                                            value={formData.buildingNo}
+                                            onChange={handleChange}
+                                        />
+                                        <TextField
+                                            label="Kapı No"
+                                            name="doorNo"
+                                            fullWidth
+                                            value={formData.doorNo}
+                                            onChange={handleChange}
+                                        />
+                                    </Stack>
+
                                     <TextField
-                                        label="Kapı No"
-                                        name="doorNo"
-                                        fullWidth
-                                        value={formData.doorNo || ''}
-                                        onChange={(e) => setFormData({ ...formData, doorNo: e.target.value })}
-                                        placeholder="Örn: 5 (Opsiyonel)"
-                                        sx={{ borderRadius: 2 }}
+                                        label="Mahalle"
+                                        name="neighborhood"
+                                        fullWidth required
+                                        value={formData.neighborhood}
+                                        onChange={handleChange}
+                                        placeholder="Örn: Caferağa Mah."
                                     />
+
+                                    <Stack direction="row" spacing={2}>
+                                        <TextField
+                                            label="İlçe"
+                                            name="district"
+                                            fullWidth required
+                                            value={formData.district}
+                                            onChange={handleChange}
+                                            placeholder="Örn: Kadıköy"
+                                        />
+                                        <TextField
+                                            label="İl"
+                                            name="province"
+                                            fullWidth required
+                                            value={formData.province}
+                                            onChange={handleChange}
+                                            placeholder="Örn: İstanbul"
+                                        />
+                                    </Stack>
                                 </Stack>
-                                <TextField
-                                    label="Mahalle/Semt/Köy"
-                                    name="district"
-                                    fullWidth
-                                    value={formData.district}
-                                    onChange={handleChange}
-                                    placeholder="Örn: Moda, Beşiktaş (Opsiyonel)"
-                                    sx={{ borderRadius: 2 }}
-                                />
-                                <TextField
-                                    label="İlçe"
-                                    name="city"
-                                    fullWidth
-                                    required
-                                    value={formData.city}
-                                    onChange={handleChange}
-                                    placeholder="Örn: Kadıköy, Beşiktaş, Şişli"
-                                    sx={{ borderRadius: 2 }}
-                                />
-                                <TextField
-                                    label="İl"
-                                    name="province"
-                                    fullWidth
-                                    required
-                                    value={formData.province || ''}
-                                    onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                                    placeholder="Örn: İstanbul, Ankara, İzmir"
-                                    sx={{ borderRadius: 2 }}
-                                />
-                                <TextField
-                                    label="Posta Kodu"
-                                    name="postalCode"
-                                    fullWidth
-                                    value={formData.postalCode}
-                                    onChange={handleChange}
-                                    placeholder="Örn: 34000"
-                                    sx={{ borderRadius: 2 }}
-                                />
-                            </Stack>
                             )}
                         </Box>
 
-                        {/* Konum Bul Butonu (Adres Gir modu) */}
+                        {/* KONUM BUL BUTONU & BİLGİLER */}
                         {locationMethod === 1 && (
-                            <Box>
-                                <Button
-                                    variant="outlined"
-                                    onClick={handleGeocodeAddress}
-                                    disabled={isGeocoding || !formData.street.trim() || !formData.province.trim()}
-                                    startIcon={isGeocoding ? <CircularProgress size={20} /> : <SearchIcon />}
-                                    fullWidth
-                                    size="large"
-                                    sx={{ 
-                                        py: 1.5,
-                                        borderRadius: 2,
-                                        fontWeight: 600
-                                    }}
-                                >
-                                    {isGeocoding ? 'Konum Aranıyor...' : 'Konumu Bul'}
-                                </Button>
-                                {location && (
-                                    <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
-                                        Konum bulundu: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                                    </Alert>
-                                )}
-                                {resolvedAddress && (
-                                    <Alert
-                                        severity="info"
-                                        icon={<LocationOnIcon />}
-                                        sx={{ mt: 2, borderRadius: 2 }}
-                                    >
-                                        Bulunan adres: {resolvedAddress}
-                                    </Alert>
-                                )}
-                            </Box>
+                            <Button
+                                variant="outlined"
+                                onClick={handleGeocodeAddress}
+                                disabled={isGeocoding}
+                                startIcon={isGeocoding ? <CircularProgress size={20} /> : <SearchIcon />}
+                                fullWidth
+                                size="large"
+                            >
+                                {isGeocoding ? 'Konum Aranıyor...' : 'Konumu Bul (Koordinatları Getir)'}
+                            </Button>
                         )}
 
-                        {/* Kaydet Butonu */}
-                        <Button 
-                            type="submit" 
-                            variant="contained" 
+                        {location && (
+                            <Alert severity="success" icon={<LocationOnIcon />}>
+                                Konum Başarıyla Seçildi: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                                <br />
+                                <small>{resolvedAddress}</small>
+                            </Alert>
+                        )}
+
+                        <Button
+                            type="submit"
+                            variant="contained"
                             size="large"
-                            fullWidth
                             disabled={!location}
-                            sx={{
-                                py: 1.5,
-                                borderRadius: 2,
-                                fontWeight: 700,
-                                fontSize: '1rem'
-                            }}
+                            fullWidth
+                            sx={{ py: 1.5, fontWeight: 'bold' }}
                         >
                             Gateway'i Kaydet
                         </Button>

@@ -33,63 +33,53 @@ exports.getUserGateways = async (req, res) => {
 // Create New Gateway
 exports.createGateway = async (req, res) => {
   try {
-    // 1. Veriyi al (address bir obje olarak geliyor)
     const { name, serialNumber, address } = req.body;
 
     if (!name || !serialNumber || !address) {
       return res.status(400).json({
-        message: 'Cihaz adı, seri numarası ve adres zorunludur.'
+        message: 'Cihaz adı, seri numarası ve adres bilgileri zorunludur.'
       });
     }
 
-    // -------------------------------------------------------------
-    // ADIM 2: Adres Objesini String'e Çevirme (Controller Dönüşümü)
-    // -------------------------------------------------------------
+    // Sıralama Önemli: Geocoding Özelden -> Genele
+    let addressSearchParts = [];
 
-    // Frontend'den gelen alanlar: street, buildingNo, doorNo, district, city, province
-    // Nominatim için en ideal format: "Sokak BinaNo, Mahalle, İlçe, İl, Ülke"
-
-    let addressSearchString = '';
-
-    if (typeof address === 'object') {
-      const parts = [];
-
-      // Sokak ve Bina No'yu birleştir (Örn: Atatürk Cad. No 12)
-      if (address.street) {
-        let streetPart = address.street.trim();
-        if (address.buildingNo) {
-          streetPart += ` ${address.buildingNo.trim()}`;
-        }
-        parts.push(streetPart);
+    if (address.street) {
+      let streetPart = address.street.trim();
+      if (address.buildingNo) {
+        streetPart += ` ${address.buildingNo.trim()}`;
       }
-
-      // Mahalle (Varsa ekle - Çok önemli)
-      if (address.district) parts.push(address.district.trim());
-
-      // İlçe
-      if (address.city) parts.push(address.city.trim());
-
-      // İl
-      if (address.province) parts.push(address.province.trim());
-
-      // Ülke (Garanti olsun diye ekliyoruz)
-      parts.push('Türkiye');
-
-      // Virgülle birleştir: "Papatya Sokak 5, Moda, Kadıköy, İstanbul, Türkiye"
-      addressSearchString = parts.join(', ');
-
-      console.log('Oluşturulan Adres Sorgusu:', addressSearchString); // Loglayıp kontrol edelim
-    } else {
-      // Eğer yanlışlıkla string gelirse olduğu gibi kullanalım
-      addressSearchString = address;
+      addressSearchParts.push(streetPart);
     }
 
-    // 3. Geocoder'a artık OBJEYİ değil, oluşturduğumuz STRING'i gönderiyoruz
-    const coords = await getCoordsFromAddress(addressSearchString);
+    if (address.neighborhood) {
+      addressSearchParts.push(address.neighborhood.trim());
+    }
+
+
+    if (address.district) {
+      addressSearchParts.push(address.district.trim());
+    }
+
+
+    if (address.province) {
+      addressSearchParts.push(address.province.trim());
+    }
+
+
+    addressSearchParts.push('Türkiye');
+
+
+    const fullAddressQuery = addressSearchParts.join(', ');
+
+    console.log('📍 Konum aranıyor:', fullAddressQuery);
+
+
+    const coords = await getCoordsFromAddress(fullAddressQuery);
 
     if (!coords) {
       return res.status(400).json({
-        message: 'Adres haritada bulunamadı. Lütfen mahalle ve ilçe bilgilerini kontrol ediniz.'
+        message: 'Adres haritada bulunamadı. Lütfen mahalle ve sokak ismini kontrol ediniz.'
       });
     }
 
@@ -97,14 +87,22 @@ exports.createGateway = async (req, res) => {
       return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
     }
 
-    // 4. Kayıt sırasında orijinal 'address' objesini saklıyoruz (gösterim için),
-    // ama 'location' alanına bulduğumuz koordinatları yazıyoruz.
+
     const newGateway = new Gateway({
       owner: req.user._id,
       name,
       serialNumber,
-      address, // Orijinal obje veritabanına kaydedilir (kapı no vs. burada saklanır)
-      location: coords, // Geocoder'dan gelen { lat, lng }
+
+      address: {
+        street: address.street,
+        buildingNo: address.buildingNo,
+        doorNo: address.doorNo,
+        neighborhood: address.neighborhood,
+        district: address.district,
+        province: address.province,
+        postalCode: address.postalCode
+      },
+      location: coords,
       status: 'inactive',
       battery: 100,
       signal_quality: 'strong',

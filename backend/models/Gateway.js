@@ -3,12 +3,14 @@ const Schema = mongoose.Schema;
 const { HEALTH_OPTIONS, GENDER_LABELS } = require('../utils/constants');
 
 const addressSchema = new Schema({
-  street: { type: String, default: '' },
-  buildingNo: { type: String, default: '' },
-  district: { type: String, default: '' },
-  city: { type: String, default: '' },
+  street: { type: String, default: '' },       // Cadde / Sokak
+  buildingNo: { type: String, default: '' },   // Bina No (Dış Kapı)
+  doorNo: { type: String, default: '' },       // İç Kapı No (Daire) 
+  neighborhood: { type: String, default: '' }, // Mahalle 
+  district: { type: String, default: '' },     // İlçe 
+  province: { type: String, default: '' },     // İl 
   postalCode: { type: String, default: '' }
-}, { _id: false })
+}, { _id: false });
 
 const registeredUserSchema = new Schema({
   fullname: { type: String, required: true, trim: true },
