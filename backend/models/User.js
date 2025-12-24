@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { HEALTH_OPTIONS, GENDER_LABELS } = require('../utils/constants');
+
+// Constants importları (Doğru yollardan emin ol)
+const { HEALTH_OPTIONS } = require('../utils/constants');
+const { GENDER_LABELS, DEMOGRAPHIC_RISK } = require('../utils/demographic');
+const { BILISSEL_ILETISIM_DUYUSAL_RISK } = require("../utils/others");
 
 const Schema = mongoose.Schema;
 
@@ -17,16 +21,16 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
     password: { type: String, required: true, minlength: 6 },
     role: { type: String, enum: ['admin', 'citizen'], default: 'citizen' },
+    phoneNumber: { type: String, default: null, trim: true, required: true },
 
-    // TC Kimlik Numarası
     tcNumber: {
       type: String,
       unique: true,
-      sparse: true, // bazı kullanıcılar doldurmayabilir
+      sparse: true,
       trim: true,
       validate: {
         validator: function (v) {
-          if (!v) return true; // boş ise geç
+          if (!v) return true;
           if (!/^\d{11}$/.test(v)) return false;
           if (v[0] === '0') return false;
           const d = v.split('').map(Number);
@@ -40,63 +44,65 @@ const userSchema = new mongoose.Schema(
       }
     },
 
-    phoneNumber: { type: String, default: null, trim: true },
+    isVerified: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
-
-    emergencyContact: {
-      type: emergencyContactUserSchema,
-      default: () => ({})
-    },
-
+    emergencyContact: { type: emergencyContactUserSchema, default: () => ({}) },
     birthDate: { type: Date, default: null },
 
-    bloodType: {
-      type: String,
-      enum: HEALTH_OPTIONS.bloodGroups,
-      default: null,
-    },
-
-    medicalConditions: {
-      type: [String],
-      enum: HEALTH_OPTIONS.chronicConditions,
-      default: [],
-    },
-
-    prosthetics: {
-      type: [String],
-      enum: HEALTH_OPTIONS.prostheses,
-      default: [],
-    },
-
-    medications: {
-      type: [String],
-      enum: HEALTH_OPTIONS.medications,
-      default: [],
-    },
-
+    // Cinsiyet (Artık demographic.js'den geliyor)
     gender: {
       type: String,
       enum: Object.keys(GENDER_LABELS),
       default: null,
     },
+
+    // --- SAĞLIK PROFİLİ ---
+    bloodType: { type: String, enum: HEALTH_OPTIONS.KAN_GRUBU, default: null },
+    respiration: { type: [String], enum: HEALTH_OPTIONS.SOLUNUM.hastaliklar, default: [] },
+    heartCirculation: { type: [String], enum: HEALTH_OPTIONS.KALP_DOLASIM.hastaliklar, default: [] },
+    metabolic: { type: [String], enum: HEALTH_OPTIONS.KANAMA_METABOLIK.hastaliklar, default: [] },
+    allergies: { type: [String], enum: HEALTH_OPTIONS.ALERJILER.hastaliklar, default: [] },
+    cancer: { type: [String], enum: HEALTH_OPTIONS.BAGISIKLIK_KANSER.hastaliklar, default: [] },
+    neurological: { type: [String], enum: HEALTH_OPTIONS.NOROLOJIK_YUKSEK_RISK.hastaliklar, default: [] },
+    medicalAddictions: { type: [String], enum: HEALTH_OPTIONS.TIBBI_BAGIMLILIK.hastaliklar, default: [] },
+    movementDisorders: { type: [String], enum: HEALTH_OPTIONS.HAREKET_KISITI.hastaliklar, default: [] },
+
+    // Yeni Eklenenler
+    demographicRisk: {
+      type: String,
+      enum: Object.keys(DEMOGRAPHIC_RISK),
+      default: [],
+    },
+    cognitiveCommunicationSensoryRisk: {
+      type: [String],
+      enum: BILISSEL_ILETISIM_DUYUSAL_RISK.hastaliklar,
+      default: [],
+    },
+
+    weight: { type: Number },
+    height: { type: Number },
+    allowsNotifications: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-
-// Hash password if modified
+// Hooks
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { return next(err); }
+  next();
 });
 
-// Compare password
+userSchema.pre('save', function (next) {
+  if (this.isModified('tcNumber')) {
+    this.isVerified = !!(this.tcNumber && this.tcNumber.length === 11);
+  }
+  next();
+});
+
 userSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };

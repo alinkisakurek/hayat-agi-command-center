@@ -1,275 +1,306 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
 import {
   Box,
-  Container,
-  Paper,
-  Typography,
-  Stack,
-  TextField,
   Button,
-  Alert,
-  CircularProgress,
+  Checkbox,
+  Container,
+  FormControlLabel,
+  Grid,
+  Link,
+  TextField,
+  Typography,
   InputAdornment,
+  IconButton,
+  Paper,
+  Alert,
+  CircularProgress
 } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
-import EmailIcon from '@mui/icons-material/Email';
-import LockIcon from '@mui/icons-material/Lock';
-import BadgeIcon from '@mui/icons-material/Badge';
-import { ROUTES } from '../constants/routes';
+import {
+  Visibility,
+  VisibilityOff,
+  Person,
+  Email,
+  Lock,
+  Phone,
+  MedicalServices,
+  VerifiedUser,
+  CheckCircle
+} from '@mui/icons-material';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { register } from '../services/authService';
 
 const Register = () => {
   const navigate = useNavigate();
 
-  // Tek bir state yapısı yeterli
+  // Form State
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    tcNumber: '',
+    name: '',
+    surname: '',
     email: '',
+    phoneNumber: '',
     password: '',
+    confirmPassword: '',
+    agreeTerms: false,
+    allowNotifications: false
   });
 
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (field) => (e) => {
-    if (field === 'tcNumber') {
-      const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 11);
-      setFormData({
-        ...formData,
-        [field]: onlyDigits,
-      });
-      setError('');
-      return;
-    }
-    setFormData({
-      ...formData,
-      [field]: e.target.value,
-    });
-    setError('');
+  // Input Değişikliklerini Yakala
+  const handleChange = (e) => {
+    const { name, value, checked, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+    setError(''); // Kullanıcı yazarken hatayı temizle
   };
 
+  // Kayıt İşlemi
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+
+    // 1. Validasyonlar
+    if (!formData.name || !formData.surname || !formData.email || !formData.password || !formData.phoneNumber) {
+      setError('Lütfen tüm zorunlu alanları doldurun.');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Şifreler eşleşmiyor.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Şifre en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    if (!formData.agreeTerms) {
+      setError('Kayıt olmak için Kullanım Koşullarını kabul etmelisiniz.');
+      return;
+    }
+
     setLoading(true);
 
-    // 1. Boş alan kontrolü
-    if (!formData.firstName || !formData.lastName || !formData.tcNumber || !formData.email || !formData.password) {
-      setError('Lütfen tüm alanları doldurun');
-      setLoading(false);
-      return;
-    }
-
-    // 2. Email format kontrolü (Basit regex)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Geçerli bir e-posta adresi giriniz');
-      setLoading(false);
-      return;
-    }
-
-    // 3. Şifre uzunluk kontrolü
-    if (formData.password.length < 6) {
-      setError('Şifre en az 6 karakter olmalıdır');
-      setLoading(false);
-      return;
-    }
-
-    // 4. TC Kimlik No doğrulama
-    const isValidTc = (tc) => {
-      if (!/^\d{11}$/.test(tc)) return false;
-      if (tc[0] === '0') return false;
-      const d = tc.split('').map(Number);
-      const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];
-      const evenSum = d[1] + d[3] + d[5] + d[7];
-      const d10 = ((oddSum * 7) - evenSum) % 10;
-      const d11 = (d.slice(0, 10).reduce((a, b) => a + b, 0)) % 10;
-      return d[9] === d10 && d[10] === d11;
-    };
-    if (!isValidTc(formData.tcNumber)) {
-      setError('Geçerli bir TC Kimlik Numarası giriniz');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const payload = {
-        name: formData.firstName,
-        surname: formData.lastName,
-        tcNumber: formData.tcNumber,
+      // Backend'e gidecek veri paketi
+      const registerData = {
+        name: formData.name,
+        surname: formData.surname,
         email: formData.email,
+        phoneNumber: formData.phoneNumber,
         password: formData.password,
+        allowsNotifications: formData.allowNotifications
       };
-      // API çağrısı
-      const { register } = await import('../services/authService');
-      await register(payload);
-      setLoading(false);
-      navigate(ROUTES.LOGIN);
+
+      await register(registerData);
+      navigate('/panel'); // Başarılıysa yönlendir
+
     } catch (err) {
-      setError('Kayıt işlemi sırasında bir hata oluştu.');
+      console.error('Kayıt hatası:', err);
+      setError(err.response?.data?.message || 'Kayıt işlemi başarısız. Lütfen bilgilerinizi kontrol edin.');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'background.default',
-        p: 2,
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={3}
-          sx={{
-            p: 4,
-            borderRadius: 4, // Biraz daha yuvarlak hatlar
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          {/* Logo veya İkon Alanı */}
-          <Box
-            sx={{
-              width: 60,
-              height: 60,
-              bgcolor: 'primary.main',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mb: 2,
-            }}
-          >
-            <PersonIcon sx={{ color: 'white', fontSize: 32 }} />
+    <Grid container component="main" sx={{ height: '100vh', overflow: 'hidden' }}>
+      {/* SOL TARA: Görsel Alan (Desktop Only) */}
+      <Grid
+        item
+        xs={false}
+        sm={4}
+        md={5}
+        sx={{
+          backgroundImage: 'url(https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80)',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: (t) => t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          position: 'relative',
+          display: { xs: 'none', sm: 'flex' },
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          p: 6,
+          color: 'white'
+        }}
+      >
+        {/* Mavi Overlay */}
+        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 86, 178, 0.85)' }} />
+
+        {/* Sol İçerik */}
+        <Box sx={{ position: 'relative', zIndex: 1, mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Box sx={{ p: 1, bgcolor: 'rgba(255,255,255,0.2)', borderRadius: '50%' }}>
+              <MedicalServices fontSize="large" />
+            </Box>
+            <Typography variant="h5" fontWeight="bold">Hayat Ağı</Typography>
+          </Box>
+          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, lineHeight: 1.2 }}>
+            Her Saniyede <br /> Yanınızdayız
+          </Typography>
+          <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400 }}>
+            Acil durumlarda en hızlı müdahale için güvenli ağımıza katılın. Sağlığınız ve güvenliğiniz bizim önceliğimiz.
+          </Typography>
+        </Box>
+      </Grid>
+
+      {/* SAĞ TARAF: Form Alanı */}
+      <Grid item xs={12} sm={8} md={7} component={Paper} elevation={6} square sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+        <Box sx={{ my: 'auto', mx: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8 }}>
+
+          {/* Mobil Logo */}
+          <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 1, mb: 4, color: 'primary.main' }}>
+            <MedicalServices fontSize="large" />
+            <Typography variant="h5" fontWeight="bold">Hayat Ağı</Typography>
           </Box>
 
-          <Typography component="h1" variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
-            Aramıza Katıl
-          </Typography>
+          <Container maxWidth="sm">
+            <Box sx={{ mb: 4 }}>
+              <Typography component="h1" variant="h4" fontWeight="900" sx={{ mb: 1, color: '#1a202c' }}>
+                Hesap Oluşturun
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Hayat Ağı'na güvenle katılın
+              </Typography>
+            </Box>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-            Hayat Ağı sistemine erişmek için hesap oluşturun.
-          </Typography>
+            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-          {/* Hata Mesajı */}
-          {error && (
-            <Alert severity="error" sx={{ width: '100%', mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              <Grid container spacing={2}>
+                {/* Ad & Soyad */}
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="name"
+                    required fullWidth
+                    id="name"
+                    label="Ad"
+                    autoFocus
+                    value={formData.name}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: (<InputAdornment position="start"><Person color="action" /></InputAdornment>),
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required fullWidth
+                    id="lastName"
+                    label="Soyad"
+                    name="surname"
+                    value={formData.surname}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: (<InputAdornment position="start"><Person color="action" /></InputAdornment>),
+                    }}
+                  />
+                </Grid>
 
-          {/* FORM BAŞLANGICI */}
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-            <Stack spacing={2.5}>
+                {/* E-posta */}
+                <Grid item xs={12}>
+                  <TextField
+                    required fullWidth
+                    id="email"
+                    label="E-posta Adresi"
+                    name="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: (<InputAdornment position="start"><Email color="action" /></InputAdornment>),
+                    }}
+                  />
+                </Grid>
 
-              {/* Ad ve Soyad Yan Yana */}
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  fullWidth
-                  id="firstName"
-                  label="Ad"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange('firstName')}
-                  disabled={loading}
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <BadgeIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  id="lastName"
-                  label="Soyad"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange('lastName')}
-                  disabled={loading}
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <BadgeIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Stack>
+                {/* Telefon */}
+                <Grid item xs={12}>
+                  <TextField
+                    required fullWidth
+                    id="phoneNumber"
+                    label="Telefon Numarası"
+                    name="phoneNumber"
+                    placeholder="5XX XXX XX XX"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Phone color="action" sx={{ mr: 1 }} />
+                          <Typography variant="body2" color="text.secondary" fontWeight="bold">+90</Typography>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
 
-              {/* E-posta */}
-              <TextField
-                fullWidth
-                id="email"
-                label="E-posta Adresi"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                disabled={loading}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+                {/* Şifreler */}
+                <Grid item xs={12}>
+                  <TextField
+                    required fullWidth
+                    name="password"
+                    label="Şifre"
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: (<InputAdornment position="start"><Lock color="action" /></InputAdornment>),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="şifreyi göster"
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    required fullWidth
+                    name="confirmPassword"
+                    label="Şifre Tekrar"
+                    type={showPassword ? 'text' : 'password'}
+                    id="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: (<InputAdornment position="start"><Lock color="action" /></InputAdornment>),
+                    }}
+                  />
+                </Grid>
 
-              {/* TC Kimlik No */}
-              <TextField
-                fullWidth
-                id="tcNumber"
-                label="TC Kimlik No"
-                name="tcNumber"
-                value={formData.tcNumber}
-                onChange={handleInputChange('tcNumber')}
-                disabled={loading}
-                required
-                inputProps={{ inputMode: 'numeric', pattern: '\\d*', maxLength: 11 }}
-                helperText="11 haneli TC Kimlik Numaranızı giriniz"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <BadgeIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+                {/* Checkboxlar */}
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={<Checkbox name="agreeTerms" color="primary" checked={formData.agreeTerms} onChange={handleChange} />}
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        <Link href="#" underline="hover" fontWeight="bold">Kullanım Koşulları</Link>'nı ve <Link href="#" underline="hover" fontWeight="bold">Gizlilik Politikasını</Link> okudum, kabul ediyorum.
+                      </Typography>
+                    }
+                  />
+                  <FormControlLabel
+                    control={<Checkbox name="allowNotifications" color="primary" checked={formData.allowNotifications} onChange={handleChange} />}
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        Profilim ve sistem güncellemeleri hakkında bilgilendirilmek istiyorum.
+                      </Typography>
+                    }
+                  />
+                </Grid>
+              </Grid>
 
-              {/* Şifre */}
-              <TextField
-                fullWidth
-                id="password"
-                label="Şifre"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange('password')}
-                disabled={loading}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              {/* Kayıt Butonu */}
               <Button
                 type="submit"
                 fullWidth
@@ -277,37 +308,38 @@ const Register = () => {
                 size="large"
                 disabled={loading}
                 sx={{
-                  mt: 2,
-                  py: 1.5,
+                  mt: 4, mb: 2, py: 1.5,
+                  fontSize: '1.1rem',
                   fontWeight: 'bold',
+                  borderRadius: 2,
                   textTransform: 'none',
-                  fontSize: '1rem'
+                  boxShadow: '0 4px 14px 0 rgba(0, 86, 178, 0.39)'
                 }}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Hesap Oluştur'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Kayıt Ol'}
               </Button>
-            </Stack>
 
-            {/* Giriş Yap Linki */}
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Zaten bir hesabın var mı?{' '}
-                <Link
-                  to={ROUTES.LOGIN}
-                  style={{
-                    color: '#1976d2',
-                    textDecoration: 'none',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Giriş Yap
-                </Link>
-              </Typography>
+              <Grid container justifyContent="center">
+                <Grid item>
+                  <Typography variant="body2" color="text.secondary">
+                    Zaten hesabınız var mı?
+                    <Link component={RouterLink} to="/login" variant="body2" fontWeight="bold" sx={{ ml: 1 }}>
+                      Giriş Yapın
+                    </Link>
+                  </Typography>
+                </Grid>
+              </Grid>
+
+              {/* Güvenlik Rozeti */}
+              <Box sx={{ mt: 6, pt: 3, borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                <VerifiedUser fontSize="small" color="action" />
+                <Typography variant="caption" fontWeight="medium">256-Bit SSL ile Güvenli Kayıt</Typography>
+              </Box>
             </Box>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+          </Container>
+        </Box>
+      </Grid>
+    </Grid>
   );
 };
 

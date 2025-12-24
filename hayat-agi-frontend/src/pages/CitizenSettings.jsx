@@ -1,711 +1,432 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
-  Typography,
   Paper,
+  Typography,
   TextField,
   Button,
   Grid,
-  Divider,
-  Snackbar,
-  Alert,
-  Stack,
-  MenuItem,
-  FormControlLabel,
-  Checkbox,
-  FormControl,
-  InputLabel,
   Select,
-  Autocomplete,
-  Chip
+  MenuItem,
+  Checkbox,
+  Radio, // <--- YENİ EKLENDİ
+  Divider,
+  CircularProgress,
+  Alert,
+  InputAdornment,
+  Chip,
 } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
-import 'dayjs/locale/tr';
-import { updateProfile, getProfile } from '../services/authService';
-import { getSystemOptions } from '../services/metadataService';
+import {
+  Badge as BadgeIcon,
+  Info,
+  CheckCircle,
+  HealthAndSafety,
+  ExpandMore,
+  Security,
+  Save,
+  Warning,
+  VisibilityOff,
+  HearingDisabled,
+  VerifiedUser
+} from '@mui/icons-material';
 
 const CitizenSettings = () => {
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState(null);
+  const [metadata, setMetadata] = useState(null);
   const [formData, setFormData] = useState({
+    tcNumber: '',
+    name: '',
+    surname: '',
     phoneNumber: '',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
-    emergencyContactRelation: '',
+    email: '',
     bloodType: '',
-    medicalConditions: [],
-    prosthetics: [],
-    birthDate: null,
-    gender: '',
-    medications: []
+    height: '',
+    weight: '',
+    respiration: [],
+    heartCirculation: [],
+    metabolic: [],
+    allergies: [],
+    neurological: [],
+    demographicRisk: [],
+    cognitiveCommunicationSensoryRisk: []
   });
 
-  // Autocomplete için seçili değerler
-  const [selectedDiseases, setSelectedDiseases] = useState([]);
-  const [selectedMedications, setSelectedMedications] = useState([]);
-  const [selectedProsthetics, setSelectedProsthetics] = useState([]);
-  const [savedData, setSavedData] = useState(null);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [loading, setLoading] = useState(false);
-
-  // Backend metadata (health options & gender labels)
-  const [metadata, setMetadata] = useState({
-    bloodGroups: [],
-    chronicConditions: [],
-    medications: [],
-    prostheses: [],
-    genders: {}
-  });
-  const [loadingMetadata, setLoadingMetadata] = useState(true);
-
-  const diseaseOptions = useMemo(() => (metadata.chronicConditions || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.chronicConditions]);
-  const medicationOptions = useMemo(() => (metadata.medications || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.medications]);
-  const prostheticOptions = useMemo(() => (metadata.prostheses || []).map((name) => ({ id: name, name, category: 'Diğer' })), [metadata.prostheses]);
-  const genderEntries = useMemo(() => Object.entries(metadata.genders || {}), [metadata.genders]);
-
-  // Sayfa yüklendiğinde önce metadata'yı, sonra profil verisini getir
+  // Verileri Çek
   useEffect(() => {
-    const loadMetadata = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getSystemOptions();
-        const ho = data.healthOptions || data.HEALTH_OPTIONS || {};
-        const gl = data.genderLabels || data.GENDER_LABELS || {};
-        setMetadata({
-          bloodGroups: ho.bloodGroups || [],
-          chronicConditions: ho.chronicConditions || [],
-          medications: ho.medications || [],
-          prostheses: ho.prostheses || [],
-          genders: gl || {}
+        const [metaRes, userRes] = await Promise.all([
+          api.get('/metadata/system-options'),
+          api.get('/users/me')
+        ]);
+        setMetadata(metaRes.data);
+        const user = userRes.data;
+        setFormData({
+          ...user,
+          // Arrayleri garantiye al
+          respiration: user.respiration || [],
+          heartCirculation: user.heartCirculation || [],
+          metabolic: user.metabolic || [],
+          allergies: user.allergies || [],
+          neurological: user.neurological || [],
+          demographicRisk: user.demographicRisk || [],
+          cognitiveCommunicationSensoryRisk: user.cognitiveCommunicationSensoryRisk || []
         });
-      } catch (error) {
-        console.error('Metadata yüklenemedi:', error);
+      } catch (err) {
+        console.error("Veri hatası:", err);
+        setMessage({ type: 'error', text: 'Veriler yüklenemedi.' });
       } finally {
-        setLoadingMetadata(false);
+        setLoading(false);
       }
     };
-    loadMetadata();
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    if (loadingMetadata) return; // wait metadata to be ready
-    const fetchProfile = async () => {
-      try {
-        const profile = await getProfile();
-        // me endpoint'i direkt user objesi döndürüyor
-        const userData = profile.user || profile;
+  // Çoklu Seçim (Checkbox) için
+  const handleCheckboxChange = (field, value) => {
+    setFormData(prev => {
+      const list = prev[field] || [];
+      return list.includes(value)
+        ? { ...prev, [field]: list.filter(i => i !== value) }
+        : { ...prev, [field]: [...list, value] };
+    });
+  };
 
-        // String'leri array'e çevir
-        const medicalConditionsArray = userData.medicalConditions
-          ? (Array.isArray(userData.medicalConditions)
-            ? userData.medicalConditions
-            : userData.medicalConditions.split(',').map(s => s.trim()).filter(Boolean))
-          : [];
-
-        const medicationsArray = userData.medications
-          ? (Array.isArray(userData.medications)
-            ? userData.medications
-            : userData.medications.split(',').map(s => s.trim()).filter(Boolean))
-          : [];
-
-        const prostheticsArray = userData.prosthetics
-          ? (Array.isArray(userData.prosthetics)
-            ? userData.prosthetics
-            : (typeof userData.prosthetics === 'string'
-              ? userData.prosthetics.split(',').map(s => s.trim()).filter(Boolean)
-              : []))
-          : [];
-
-        // Rahatsızlıkları disease objelerine eşleştir
-        const matchedDiseases = medicalConditionsArray.map(name =>
-          diseaseOptions.find(d => d.name === name) || { id: name, name, category: 'Diğer' }
-        );
-
-        // İlaçları medication objelerine eşleştir
-        const matchedMedications = medicationsArray.map(name =>
-          medicationOptions.find(m => m.name === name) || { id: name, name, category: 'Diğer' }
-        );
-
-        // Protezleri prosthetics objelerine eşleştir
-        const matchedProsthetics = prostheticsArray.map(name =>
-          prostheticOptions.find(p => p.name === name) || { id: name, name, category: 'Diğer' }
-        );
-
-        setSelectedDiseases(matchedDiseases);
-        setSelectedMedications(matchedMedications);
-        setSelectedProsthetics(matchedProsthetics);
-
-        setFormData({
-          phoneNumber: userData.phoneNumber || '',
-          emergencyContactName: userData.emergencyContact?.fullname || '',
-          emergencyContactPhone: userData.emergencyContact?.phone || '',
-          emergencyContactRelation: userData.emergencyContact?.relation || '',
-          bloodType: userData.bloodType || '',
-          medicalConditions: medicalConditionsArray,
-          prosthetics: prostheticsArray,
-          birthDate: userData.birthDate ? dayjs(userData.birthDate) : null,
-          gender: userData.gender || '',
-          medications: medicationsArray
-        });
-        setSavedData(userData);
-      } catch (error) {
-        console.error('Profil bilgileri alınamadı:', error);
+  // Tekli Seçim (Radio) için - YENİ FONKSİYON
+  const handleSingleSelectChange = (field, value) => {
+    setFormData(prev => {
+      // Eğer zaten seçili olana tekrar tıklanırsa seçimi kaldır (Opsiyonel UX)
+      if (prev[field]?.includes(value)) {
+        return { ...prev, [field]: [] };
       }
-    };
-    fetchProfile();
-  }, [loadingMetadata]);
-
-  const handleChange = (field) => (event) => {
-    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value
-    }));
+      // Değilse, eskiyi sil ve sadece yeniyi ekle
+      return { ...prev, [field]: [value] };
+    });
   };
 
-  const handleDiseasesChange = (event, newValue) => {
-    setSelectedDiseases(newValue);
-    setFormData((prev) => ({
-      ...prev,
-      medicalConditions: newValue.map(d => d.name)
-    }));
-  };
-
-  const handleMedicationsChange = (event, newValue) => {
-    setSelectedMedications(newValue);
-    setFormData((prev) => ({
-      ...prev,
-      medications: newValue.map(m => m.name)
-    }));
-  };
-
-  const handleProstheticsChange = (event, newValue) => {
-    setSelectedProsthetics(newValue);
-    setFormData((prev) => ({
-      ...prev,
-      prosthetics: newValue.map(p => p.name),
-      hasProsthesis: newValue.length > 0
-    }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-
+  const handleSave = async () => {
+    setMessage(null);
     try {
-      // FormData'yı backend formatına çevir
-      // Build payload: send arrays (not joined strings) and use null for unset selects
-      const submitData = {
-        phoneNumber: formData.phoneNumber || null,
-        emergencyContact: {
-          fullname: formData.emergencyContactName || undefined,
-          phone: formData.emergencyContactPhone || undefined,
-          relation: formData.emergencyContactRelation || undefined
-        },
-        birthDate: formData.birthDate ? formData.birthDate.toISOString().split('T')[0] : null,
-        bloodType: formData.bloodType || null,
-        gender: formData.gender || null,
-        medicalConditions: Array.isArray(formData.medicalConditions) ? formData.medicalConditions.filter(Boolean) : [],
-        medications: Array.isArray(formData.medications) ? formData.medications.filter(Boolean) : [],
-        prosthetics: Array.isArray(formData.prosthetics) ? formData.prosthetics.filter(Boolean) : [],
-        hasProsthesis: (formData.prosthetics || []).length > 0
-      };
-
-      const response = await updateProfile(submitData);
-      // updateProfile response'unda user objesi var
-      const userData = response.user || response;
-
-      // Update local UI state with saved data (mirror fetchProfile mapping)
-      const medicalConditionsArray = userData.medicalConditions
-        ? (Array.isArray(userData.medicalConditions)
-          ? userData.medicalConditions
-          : userData.medicalConditions.split(',').map(s => s.trim()).filter(Boolean))
-        : [];
-
-      const medicationsArray = userData.medications
-        ? (Array.isArray(userData.medications)
-          ? userData.medications
-          : userData.medications.split(',').map(s => s.trim()).filter(Boolean))
-        : [];
-
-      const prostheticsArray = userData.prosthetics
-        ? (Array.isArray(userData.prosthetics)
-          ? userData.prosthetics
-          : (typeof userData.prosthetics === 'string'
-            ? userData.prosthetics.split(',').map(s => s.trim()).filter(Boolean)
-            : []))
-        : [];
-
-      const matchedDiseases = medicalConditionsArray.map(name =>
-        diseaseOptions.find(d => d.name === name) || { id: name, name, category: 'Diğer' }
-      );
-
-      const matchedMedications = medicationsArray.map(name =>
-        medicationOptions.find(m => m.name === name) || { id: name, name, category: 'Diğer' }
-      );
-
-      const matchedProsthetics = prostheticsArray.map(name =>
-        prostheticOptions.find(p => p.name === name) || { id: name, name, category: 'Diğer' }
-      );
-
-      setSelectedDiseases(matchedDiseases);
-      setSelectedMedications(matchedMedications);
-      setSelectedProsthetics(matchedProsthetics);
-
-      setFormData({
-        phoneNumber: userData.phoneNumber || '',
-        emergencyContactName: userData.emergencyContact?.fullname || '',
-        emergencyContactPhone: userData.emergencyContact?.phone || '',
-        emergencyContactRelation: userData.emergencyContact?.relation || '',
-        bloodType: userData.bloodType || '',
-        medicalConditions: medicalConditionsArray,
-        prosthetics: prostheticsArray,
-        birthDate: userData.birthDate ? dayjs(userData.birthDate) : null,
-        gender: userData.gender || '',
-        medications: medicationsArray
-      });
-
-      setSavedData(userData);
-      setSnackbarMessage(response.message || 'Profil ayarlarınız başarıyla kaydedildi.');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Profil güncellenirken bir hata oluştu.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
+      await api.put('/users/profile', formData);
+      setMessage({ type: 'success', text: 'Profil başarıyla güncellendi.' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Hata oluştu.' });
     }
   };
 
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
+
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold">
-          Profil Ayarları
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-          Telefon numaranızı ve acil durum kişilerinizi güncel tutarak afet durumlarında hızlı iletişim sağlayın.
-        </Typography>
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100%', pb: 15, position: 'relative' }}>
+      <Box sx={{ maxWidth: '1000px', mx: 'auto', p: { xs: 2, md: 4 } }}>
+
+        {/* PAGE HEADER */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', mb: 1 }}>
+            Profil ve Sağlık Ayarları
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#64748b' }}>
+            Acil durum ekipleri için hayati bilgilerinizi güncel tutun. Bu bilgiler 112 ile entegre çalışır.
+          </Typography>
+          {message && <Alert severity={message.type} sx={{ mt: 2 }}>{message.text}</Alert>}
+        </Box>
+
+        {/* 1. IDENTITY VERIFICATION CARD */}
+        <Paper variant="outlined" sx={{ borderRadius: 3, mb: 4, overflow: 'hidden', borderColor: '#e2e8f0' }}>
+          <Box sx={{ px: 3, py: 2, bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <BadgeIcon sx={{ color: '#0056b2' }} />
+              <Typography variant="subtitle1" fontWeight="bold" color="#0f172a">Kimlik Doğrulama</Typography>
+            </Box>
+            {formData.isVerified ? (
+              <Chip icon={<VerifiedUser />} label="Doğrulanmış Hesap" color="success" size="small" variant="outlined" sx={{ bgcolor: '#dcfce7', color: '#166534', borderColor: '#bbf7d0', fontWeight: 'bold' }} />
+            ) : (
+              <Chip label="Doğrulama Bekliyor" size="small" sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 'bold' }} />
+            )}
+          </Box>
+          <Box sx={{ p: 3 }}>
+            <Grid container spacing={3} alignItems="flex-start">
+              <Grid item xs={12} md={8}>
+                <Typography variant="body2" fontWeight="bold" sx={{ mb: 1, color: '#0f172a' }}>TC Kimlik Numarası</Typography>
+                <TextField
+                  fullWidth
+                  placeholder="11 haneli kimlik numaranız"
+                  value={formData.tcNumber || ''}
+                  onChange={(e) => setFormData({ ...formData, tcNumber: e.target.value })}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><BadgeIcon sx={{ color: '#94a3b8' }} /></InputAdornment>,
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1.5, alignItems: 'start' }}>
+                  <Info sx={{ color: '#0056b2', fontSize: 20, mt: 0.2 }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                    Acil durumda 112 ekiplerinin sizi kesin tanıması için TC kimlik numaranızı ekleyin. Bu işlem profilinize <strong>'Doğrulanmış Hesap'</strong> statüsü kazandırır.
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={4} sx={{ display: 'flex', alignItems: 'center', mt: { md: 3.5 } }}>
+                <Button fullWidth variant="outlined" size="large" sx={{ borderRadius: 2, textTransform: 'none', color: '#475569', borderColor: '#cbd5e1' }}>
+                  E-Devlet ile Doğrula
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </Paper>
+
+        {/* 2. PERSONAL INFO CARD */}
+        <Paper variant="outlined" sx={{ borderRadius: 3, mb: 4, borderColor: '#e2e8f0' }}>
+          <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #e2e8f0' }}>
+            <Typography variant="subtitle1" fontWeight="bold" color="#0f172a">Kişisel Bilgiler</Typography>
+          </Box>
+          <Box sx={{ p: 3 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Ad</Typography>
+                <TextField fullWidth value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Soyad</Typography>
+                <TextField fullWidth value={formData.surname} onChange={(e) => setFormData({ ...formData, surname: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Telefon Numarası</Typography>
+                <TextField
+                  fullWidth disabled value={formData.phoneNumber || ''}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }}
+                  InputProps={{ endAdornment: <CheckCircle sx={{ color: '#10b981', fontSize: 20 }} /> }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>E-posta</Typography>
+                <TextField fullWidth disabled value={formData.email} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }} />
+              </Grid>
+
+              <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed' }} /></Grid>
+
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Kan Grubu</Typography>
+                <Select
+                  fullWidth value={formData.bloodType || ''}
+                  onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
+                  displayEmpty
+                  sx={{ borderRadius: 2 }}
+                >
+                  <MenuItem value="">Seçiniz</MenuItem>
+                  {metadata?.healthOptions?.KAN_GRUBU?.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+                </Select>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Boy (cm)</Typography>
+                <TextField type="number" fullWidth value={formData.height || ''} onChange={(e) => setFormData({ ...formData, height: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Kilo (kg)</Typography>
+                <TextField type="number" fullWidth value={formData.weight || ''} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+              </Grid>
+            </Grid>
+          </Box>
+        </Paper>
+
+        {/* 3. HEALTH RISK PROFILE */}
+        <Paper variant="outlined" sx={{ borderRadius: 3, borderColor: '#e2e8f0', overflow: 'hidden' }}>
+          <Box sx={{ px: 3, py: 2, bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold" color="#0f172a">Sağlık Risk Profili</Typography>
+              <Typography variant="caption" color="text.secondary">İşaretlediğiniz hastalıklar acil durumda personele gösterilecektir.</Typography>
+            </Box>
+            <Box sx={{ bgcolor: '#eff6ff', p: 1, borderRadius: 2, color: '#0056b2' }}>
+              <HealthAndSafety />
+            </Box>
+          </Box>
+
+          {/* Dynamic Sections Loop */}
+          {[
+            { key: 'SOLUNUM', field: 'respiration', color: '#ef4444' },
+            { key: 'KALP_DOLASIM', field: 'heartCirculation', color: '#ef4444' },
+            { key: 'KANAMA_METABOLIK', field: 'metabolic', color: '#f59e0b' },
+            { key: 'NOROLOJIK_YUKSEK_RISK', field: 'neurological', color: '#8b5cf6' },
+          ].map((section) => {
+            const meta = metadata?.healthOptions?.[section.key];
+            if (!meta) return null;
+
+            return (
+              <Box key={section.key} sx={{ borderBottom: '1px solid #e2e8f0' }}>
+                <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: '#f8fafc' } }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: section.color, mr: 2 }} />
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ flexGrow: 1 }}>{meta.kategori}</Typography>
+                  <ExpandMore sx={{ color: '#94a3b8' }} />
+                </Box>
+                <Box sx={{ px: 3, pb: 3, pt: 1 }}>
+                  <Grid container spacing={2}>
+                    {meta.hastaliklar.map((disease) => (
+                      <Grid item xs={12} sm={6} key={disease}>
+                        <Box
+                          onClick={() => handleCheckboxChange(section.field, disease)}
+                          sx={{
+                            display: 'flex', alignItems: 'center', p: 1.5,
+                            border: '1px solid',
+                            borderColor: formData[section.field]?.includes(disease) ? 'primary.main' : '#e2e8f0',
+                            borderRadius: 2,
+                            cursor: 'pointer',
+                            bgcolor: formData[section.field]?.includes(disease) ? '#eff6ff' : 'white',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <Checkbox
+                            checked={formData[section.field]?.includes(disease) || false}
+                            size="small"
+                            sx={{ p: 0.5, mr: 1 }}
+                          />
+                          <Box>
+                            <Typography variant="body2" fontWeight="500">{disease}</Typography>
+                            {/* Kritik hastalık uyarısı simülasyonu */}
+                            {['KOAH', 'Kalp Yetmezliği', 'Epilepsi'].includes(disease) && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                <Warning sx={{ fontSize: 14, color: '#ef4444' }} />
+                                <Typography variant="caption" color="error" fontWeight="bold">Yüksek Risk</Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </Box>
+            );
+          })}
+
+          {/* DEMOGRAPHIC RISKS (GÜNCELLENDİ - TEKLİ SEÇİM) */}
+          {metadata?.demographicRisks && (
+            <Box sx={{ bgcolor: '#f1f5f9', p: 3, borderTop: '1px solid #e2e8f0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#64748b', mr: 2 }} />
+                <Typography variant="subtitle2" fontWeight="bold">Demografik & Fiziksel Riskler</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                {Object.entries(metadata.demographicRisks).map(([key, obj]) => {
+                  // Seçili olup olmadığını kontrol et
+                  const isSelected = formData.demographicRisk?.includes(key);
+
+                  return (
+                    <Grid item xs={12} sm={6} key={key}>
+                      <Box
+                        // YENİ FONKSİYONU ÇAĞIRIYORUZ
+                        onClick={() => handleSingleSelectChange('demographicRisk', key)}
+                        sx={{
+                          display: 'flex', alignItems: 'center', p: 2,
+                          // Seçiliyse mavi çerçeve, değilse gri
+                          border: '1px solid',
+                          borderColor: isSelected ? 'primary.main' : '#cbd5e1',
+                          // Seçiliyse hafif mavi arka plan
+                          bgcolor: isSelected ? '#eff6ff' : 'white',
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': { borderColor: 'primary.main' }
+                        }}
+                      >
+                        {/* CHECKBOX YERİNE RADIO KULLANIYORUZ */}
+                        <Radio
+                          checked={isSelected || false}
+                          size="small"
+                          sx={{ p: 0, mr: 1.5 }}
+                        />
+
+                        <Box>
+                          <Typography variant="body2" fontWeight="bold" color={isSelected ? 'primary.main' : 'text.primary'}>
+                            {obj.etiket}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {obj.aciklama}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Box>
+          )}
+
+          {/* COGNITIVE / SENSORY RISKS */}
+          {metadata?.sensoryRisks?.hastaliklar && (
+            <Box sx={{ p: 3, borderTop: '1px solid #e2e8f0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f59e0b', mr: 2 }} />
+                <Typography variant="subtitle2" fontWeight="bold">Bilişsel ve Duyusal Durumlar</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {metadata.sensoryRisks.hastaliklar.map((risk) => (
+                  <Box
+                    key={risk}
+                    onClick={() => handleCheckboxChange('cognitiveCommunicationSensoryRisk', risk)}
+                    sx={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      p: 2, border: '1px solid #e2e8f0', borderRadius: 2,
+                      borderColor: formData.cognitiveCommunicationSensoryRisk?.includes(risk) ? 'primary.main' : '#e2e8f0',
+                      bgcolor: formData.cognitiveCommunicationSensoryRisk?.includes(risk) ? '#eff6ff' : 'transparent',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box sx={{ bgcolor: '#f1f5f9', p: 1, borderRadius: 1, color: '#64748b' }}>
+                        {risk.includes('Görme') ? <VisibilityOff /> : risk.includes('İşitme') ? <HearingDisabled /> : <Warning />}
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">{risk}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {risk.includes('Görme') ? 'Sesli yanıt sistemi önceliklendirilecektir.' : 'Operatörler yazılı iletişim kuracaktır.'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {/* Switch Görünümlü Checkbox Simülasyonu */}
+                    <Box sx={{
+                      width: 44, height: 24, borderRadius: 12, position: 'relative', transition: '0.3s',
+                      bgcolor: formData.cognitiveCommunicationSensoryRisk?.includes(risk) ? '#0056b2' : '#cbd5e1'
+                    }}>
+                      <Box sx={{
+                        width: 20, height: 20, borderRadius: '50%', bgcolor: 'white', position: 'absolute', top: 2,
+                        left: formData.cognitiveCommunicationSensoryRisk?.includes(risk) ? 22 : 2, transition: '0.3s'
+                      }} />
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Paper>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={7}>
-          <Paper
-            component="form"
-            onSubmit={handleSubmit}
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 3,
-              border: '1px solid rgba(0,0,0,0.08)'
-            }}
-          >
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 1.5 }}>
-              İletişim Bilgileri
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Afet durumunda size ulaşabilmemiz için telefon numaranızı doğrulayın.
-            </Typography>
+      {/* STICKY FOOTER */}
+      <Box sx={{ position: 'fixed', bottom: 20, left: { md: '256px', xs: 12 }, right: { md: 20, xs: 12 }, zIndex: 1400 }}>
+        <Paper elevation={0} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 0, borderRadius: 3, boxShadow: '0 10px 30px rgba(2,6,23,0.06)', bgcolor: 'transparent' }}>
+          <Box sx={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center', gap: 1, p: 1, bgcolor: 'transparent', borderRadius: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <Button
+              variant="text"
+              onClick={() => window.history.back()}
+              sx={{ width: { xs: '100%', sm: 'auto' }, color: '#64748b', textTransform: 'none', borderRadius: 2 }}
+            >
+              İptal
+            </Button>
 
-            <Stack spacing={2} sx={{ mb: 4 }}>
-              <TextField
-                label="Telefon Numaranız"
-                placeholder="+90 5XX XXX XX XX"
-                value={formData.phoneNumber}
-                onChange={handleChange('phoneNumber')}
-                required
-              />
-            </Stack>
-
-            <Divider sx={{ my: 3 }} />
-
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 1.5 }}>
-              Acil Durum Kişisi
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Sizin adınıza iletişime geçebileceğimiz bir yakınınızı ekleyin.
-            </Typography>
-
-            <Stack spacing={2}>
-              <TextField
-                label="Kişi Adı Soyadı"
-                value={formData.emergencyContactName}
-                onChange={handleChange('emergencyContactName')}
-                required
-              />
-              <TextField
-                label="Yakınlık Derecesi"
-                placeholder="Örn. Kardeşim, Komşum"
-                value={formData.emergencyContactRelation}
-                onChange={handleChange('emergencyContactRelation')}
-              />
-              <TextField
-                label="Telefon Numarası"
-                placeholder="+90 5XX XXX XX XX"
-                value={formData.emergencyContactPhone}
-                onChange={handleChange('emergencyContactPhone')}
-                required
-              />
-            </Stack>
-
-            <Divider sx={{ my: 3 }} />
-
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 1.5 }}>
-              Sağlık Bilgileri
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Afet durumunda size daha iyi yardımcı olabilmemiz için sağlık bilgilerinizi paylaşın.
-            </Typography>
-
-            <Stack spacing={3}>
-              <FormControl fullWidth>
-                <InputLabel>Kan Grubu</InputLabel>
-                <Select
-                  value={formData.bloodType}
-                  onChange={handleChange('bloodType')}
-                  label="Kan Grubu"
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {(metadata.bloodGroups || []).map((group) => (
-                    <MenuItem key={group} value={group}>
-                      {group}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
-                <DatePicker
-                  label="Doğum Tarihi"
-                  value={formData.birthDate}
-                  onChange={(newValue) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      birthDate: newValue
-                    }));
-                  }}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      variant: 'outlined'
-                    }
-                  }}
-                  maxDate={dayjs()}
-                  format="DD/MM/YYYY"
-                />
-              </LocalizationProvider>
-
-              <FormControl fullWidth>
-                <InputLabel>Cinsiyet</InputLabel>
-                <Select
-                  value={formData.gender}
-                  onChange={handleChange('gender')}
-                  label="Cinsiyet"
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {genderEntries.map(([key, label]) => (
-                    <MenuItem key={key} value={key}>{label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <Autocomplete
-                multiple
-                options={diseaseOptions}
-                getOptionLabel={(option) => option.name}
-                value={selectedDiseases}
-                onChange={handleDiseasesChange}
-                filterSelectedOptions
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Rahatsızlıklar"
-                    placeholder="Rahatsızlık arayın veya seçin"
-                    helperText="Mevcut sağlık durumunuzu ve rahatsızlıklarınızı belirtin"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      size="small"
-                    />
-                  ))
-                }
-                groupBy={(option) => option.category}
-                renderGroup={(params) => (
-                  <li key={params.key}>
-                    <Box
-                      component="div"
-                      sx={{
-                        position: 'sticky',
-                        top: '-8px',
-                        padding: '8px 12px',
-                        background: 'rgba(0, 76, 180, 0.08)',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        color: 'primary.main',
-                        zIndex: 1
-                      }}
-                    >
-                      {params.group}
-                    </Box>
-                    <Box component="ul" sx={{ padding: 0 }}>
-                      {params.children}
-                    </Box>
-                  </li>
-                )}
-                sx={{ width: '100%' }}
-              />
-
-              <Autocomplete
-                multiple
-                options={medicationOptions}
-                getOptionLabel={(option) => option.name}
-                value={selectedMedications}
-                onChange={handleMedicationsChange}
-                filterSelectedOptions
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Kullandığınız İlaçlar"
-                    placeholder="İlaç arayın veya seçin"
-                    helperText="Düzenli olarak kullandığınız ilaçları belirtin"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      size="small"
-                    />
-                  ))
-                }
-                groupBy={(option) => option.category}
-                renderGroup={(params) => (
-                  <li key={params.key}>
-                    <Box
-                      component="div"
-                      sx={{
-                        position: 'sticky',
-                        top: '-8px',
-                        padding: '8px 12px',
-                        background: 'rgba(0, 76, 180, 0.08)',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        color: 'primary.main',
-                        zIndex: 1
-                      }}
-                    >
-                      {params.group}
-                    </Box>
-                    <Box component="ul" sx={{ padding: 0 }}>
-                      {params.children}
-                    </Box>
-                  </li>
-                )}
-                sx={{ width: '100%' }}
-              />
-
-              <Autocomplete
-                multiple
-                options={prostheticOptions}
-                getOptionLabel={(option) => option.name}
-                value={selectedProsthetics}
-                onChange={handleProstheticsChange}
-                filterSelectedOptions
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Kullandığınız Protez/Cihaz"
-                    placeholder="Protez veya cihaz arayın veya seçin"
-                    helperText="Kullandığınız protez veya tıbbi cihazları belirtin"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      size="small"
-                    />
-                  ))
-                }
-                groupBy={(option) => option.category}
-                renderGroup={(params) => (
-                  <li key={params.key}>
-                    <Box
-                      component="div"
-                      sx={{
-                        position: 'sticky',
-                        top: '-8px',
-                        padding: '8px 12px',
-                        background: 'rgba(0, 76, 180, 0.08)',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        color: 'primary.main',
-                        zIndex: 1
-                      }}
-                    >
-                      {params.group}
-                    </Box>
-                    <Box component="ul" sx={{ padding: 0 }}>
-                      {params.children}
-                    </Box>
-                  </li>
-                )}
-                sx={{ width: '100%' }}
-              />
-            </Stack>
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
-              <Button
-                type="submit"
-                variant="contained"
-                size="large"
-                disabled={loading}
-              >
-                {loading ? 'Kaydediliyor...' : 'Bilgileri Kaydet'}
-              </Button>
-            </Box>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={5}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 3,
-              border: '1px solid rgba(0,0,0,0.05)',
-              bgcolor: 'rgba(0, 76, 180, 0.04)'
-            }}
-          >
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-              Son Kaydedilen Bilgiler
-            </Typography>
-
-            {savedData ? (
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Telefon Numaranız
-                  </Typography>
-                  <Typography variant="h6" fontWeight="bold">
-                    {savedData.phoneNumber || 'Belirtilmemiş'}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Acil Durum Kişisi
-                  </Typography>
-                  <Typography variant="body1" fontWeight="bold">
-                    {savedData.emergencyContact?.fullname || 'Belirtilmemiş'}
-                  </Typography>
-                  {savedData.emergencyContact?.relation && (
-                    <Typography variant="body2" color="text.secondary">
-                      Yakınlık: {savedData.emergencyContact?.relation}
-                    </Typography>
-                  )}
-                  <Typography variant="body2" color="text.secondary">
-                    Telefon: {savedData.emergencyContact?.phone || 'Belirtilmemiş'}
-                  </Typography>
-                </Box>
-                {(savedData.bloodType || savedData.gender || savedData.birthDate) && (
-                  <>
-                    <Divider />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Sağlık Bilgileri
-                      </Typography>
-                      {savedData.bloodType && (
-                        <Typography variant="body2">
-                          Kan Grubu: <strong>{savedData.bloodType}</strong>
-                        </Typography>
-                      )}
-                      {savedData.gender && (
-                        <Typography variant="body2">
-                          Cinsiyet: <strong>{metadata.genders?.[savedData.gender] || (savedData.gender === 'male' ? 'Erkek' : savedData.gender === 'female' ? 'Kadın' : savedData.gender === 'prefer_not_to_say' ? 'Belirtmek istemiyorum' : '')}</strong>
-                        </Typography>
-                      )}
-                      {savedData.birthDate && (
-                        <Typography variant="body2">
-                          Doğum Tarihi: <strong>
-                            {new Date(savedData.birthDate).toLocaleDateString('tr-TR')}
-                          </strong>
-                        </Typography>
-                      )}
-                      {savedData.medicalConditions && (
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          Rahatsızlıklar: <strong>
-                            {typeof savedData.medicalConditions === 'string'
-                              ? savedData.medicalConditions
-                              : savedData.medicalConditions.join(', ')}
-                          </strong>
-                        </Typography>
-                      )}
-                      {savedData.medications && (
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          İlaçlar: <strong>
-                            {typeof savedData.medications === 'string'
-                              ? savedData.medications
-                              : savedData.medications.join(', ')}
-                          </strong>
-                        </Typography>
-                      )}
-                      {savedData.prosthetics && (
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          Protez/Cihaz: <strong>
-                            {typeof savedData.prosthetics === 'string'
-                              ? savedData.prosthetics
-                              : savedData.prosthetics.join(', ')}
-                          </strong>
-                        </Typography>
-                      )}
-                    </Box>
-                  </>
-                )}
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Henüz bir kayıt bulunmuyor. Bilgilerinizi kaydettikten sonra burada özetini görebilirsiniz.
-              </Typography>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              startIcon={<Save />}
+              sx={{ width: { xs: '100%', sm: 'auto' }, ml: { sm: 1 }, background: 'linear-gradient(90deg,#0066ff,#0044cc)', boxShadow: '0 8px 24px rgba(0,86,178,0.18)', '&:hover': { opacity: 0.95 }, textTransform: 'none', borderRadius: 2, px: 3, fontWeight: 'bold' }}
+            >
+              Değişiklikleri Kaydet
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
     </Box>
   );
 };
 
 export default CitizenSettings;
-
-

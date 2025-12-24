@@ -5,11 +5,11 @@ const User = require('../models/User');
 // POST /api/users/register
 async function register(req, res, next) {
   try {
-    const { name, surname, tcNumber, email, password } = req.body;
+    const { name, surname, phoneNumber, email, password, allowsNotifications } = req.body;
     const normalizedEmail = (email || '').toLowerCase();
 
-    if (!name || !surname || !email || !password || !tcNumber) {
-      return res.status(400).json({ message: 'Ad, soyad, e-posta, şifre ve TC Kimlik zorunludur' });
+    if (!name || !surname || !email || !password || !phoneNumber) {
+      return res.status(400).json({ message: 'Ad, soyad, e-posta, şifre ve telefon numarası zorunludur' });
     }
 
     if (password.length < 6) {
@@ -21,18 +21,19 @@ async function register(req, res, next) {
       return res.status(400).json({ message: 'Email kayıtlı.' });
     }
 
-    const existsTC = await User.findOne({ tcNumber });
-    if (existsTC) {
-      return res.status(400).json({ message: 'TC Kimlik Numarası zaten kayıtlı.' });
+    const existsPhoneNumber = await User.findOne({ phoneNumber });
+    if (existsPhoneNumber) {
+      return res.status(400).json({ message: 'Telefon numarası zaten kayıtlı.' });
     }
 
     // Do not hash here — the model's pre-save hook will hash the password.
     const user = await User.create({
       name,
       surname,
-      tcNumber,
+      phoneNumber,
       email: normalizedEmail,
-      password
+      password,
+      allowsNotifications: allowsNotifications || false,
     });
 
     res.status(201).json({
@@ -81,12 +82,21 @@ async function me(req, res, next) {
 async function updateProfile(req, res, next) {
   try {
     const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
-    }
-    const allowedUpdates = ['phoneNumber', 'bloodType',
-      'birthDate', 'gender', 'medicalConditions',
-      'medications', 'prosthetics'];
+    if (!user) return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+
+    // YENİ ALANLARI BURAYA EKLEDİK:
+    const allowedUpdates = [
+      'name', 'surname', 'phoneNumber', 'email', // Temel bilgiler
+      'tcNumber', // Kimlik
+      'bloodType', 'weight', 'height', 'gender', // Fiziksel
+      // Tıbbi Kategoriler (User modeline eklediğimiz yeni alanlar)
+      'respiration', 'heartCirculation', 'metabolic',
+      'allergies', 'cancer', 'neurological',
+      'medicalAddictions', 'movementDisorders',
+      // Risk Grupları
+      'demographicRisk', 'cognitiveCommunicationSensoryRisk',
+      'allowsNotifications'
+    ];
 
     allowedUpdates.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -113,8 +123,7 @@ async function updateProfile(req, res, next) {
         surname: updatedUser.surname,
         email: updatedUser.email,
         role: updatedUser.role,
-        // Diğer alanları tek tek yazmana gerek yok, frontend ihtiyacına göre dönersin
-        // veya tüm güncel objeyi dönebilirsin (password hariç):
+
         ...updatedUser.toObject()
       }
     });
