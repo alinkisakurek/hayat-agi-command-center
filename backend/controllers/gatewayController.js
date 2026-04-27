@@ -202,6 +202,55 @@ exports.updateGateway = async (req, res) => {
   }
 };
 
+// PATCH /gateways/:id — partial telemetry updates from the mobile client.
+// Body may contain any of: deviceCount, latitude, longitude, locationAddress.
+exports.patchGatewayTelemetry = async (req, res) => {
+  try {
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const { id } = req.params;
+    const { deviceCount, latitude, longitude, locationAddress } = req.body || {};
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
+    }
+
+    if (deviceCount !== undefined) {
+      gateway.connected_devices = deviceCount;
+    }
+
+    if (latitude !== undefined && longitude !== undefined) {
+      gateway.location = { lat: latitude, lng: longitude };
+    } else if (latitude !== undefined || longitude !== undefined) {
+      return res.status(400).json({
+        message: 'latitude ve longitude beraber gönderilmelidir.'
+      });
+    }
+
+    if (locationAddress !== undefined) {
+      gateway.locationAddress = locationAddress;
+    }
+
+    gateway.last_seen = new Date();
+
+    await gateway.save();
+
+    res.status(200).json({
+      message: 'Telemetri güncellendi.',
+      gateway
+    });
+  } catch (error) {
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error('Patch gateway telemetry error:', error);
+    res.status(500).json({ message: 'Sunucu hatası' });
+  }
+};
+
 exports.addPersonToGateway = async (req, res) => {
   try {
     const { id } = req.params; // Gateway ID'si URL'den gelir

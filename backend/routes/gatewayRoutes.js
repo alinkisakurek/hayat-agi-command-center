@@ -7,6 +7,7 @@ router.get('/', protect, gatewayController.getGateways);
 router.get('/user', protect, gatewayController.getUserGateways);
 
 router.put('/:id', protect, gatewayController.updateGateway);
+router.patch('/:id', protect, gatewayController.patchGatewayTelemetry);
 
 router.post('/', protect, gatewayController.createGateway);
 
