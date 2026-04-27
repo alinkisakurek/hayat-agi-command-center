@@ -58,3 +58,9 @@ export const updateGateway = async (id, gatewayData) => {
     const response = await api.put(`/gateways/${id}`, gatewayData); // Backend rotan PUT /gateways/:id olmalı
     return response.data;
 };
+
+// 10. Cihaza ait afet/uyarı kayıtlarını getir (yeni → eski)
+export const getGatewayAlerts = async (gatewayId, { limit = 100 } = {}) => {
+    const response = await api.get(`${API_URL}/${gatewayId}/alerts`, { params: { limit } });
+    return response.data;
+};
