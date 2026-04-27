@@ -77,6 +77,11 @@ const gatewaySchema = new Schema({
     default: () => ({})
   },
 
+  locationAddress: {
+    type: String,
+    default: ''
+  },
+
   registered_users: {
     type: [registeredUserSchema],
     default: []
