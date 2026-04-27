@@ -35,7 +35,7 @@ const GatewayDetailCard = ({ gateway }) => {
                 }}
             >
                 <Typography variant="body1" color="text.secondary" align="center">
-                    Detayları görmek için bir gateway seçin
+                    Detayları görmek için bir cihaz seçin
                 </Typography>
             </Paper>
         );

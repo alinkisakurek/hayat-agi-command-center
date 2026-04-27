@@ -86,7 +86,7 @@ const GatewayList = ({ gateways, selectedGateway, onGatewaySelect }) => {
                     </Box>
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" fontWeight="700" sx={{ fontSize: '1.125rem', mb: 0.25 }}>
-                            Gateway Listesi
+                            Cihaz Listesi
                         </Typography>
                         <Typography variant="caption" sx={{ opacity: 0.95, fontSize: '0.75rem' }}>
                             {gateways.length} {gateways.length === 1 ? 'cihaz' : 'cihaz'} bulundu
@@ -109,10 +109,10 @@ const GatewayList = ({ gateways, selectedGateway, onGatewaySelect }) => {
                         >
                             <RouterIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
                             <Typography variant="body1" color="text.secondary" fontWeight={600}>
-                                Henüz gateway bulunmuyor
+                                Henüz cihaz bulunmuyor
                             </Typography>
                             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                                Yeni gateway eklemek için yönetim paneline gidin
+                                Yeni cihaz eklemek için yönetim paneline gidin
                             </Typography>
                         </Box>
                     </Box>

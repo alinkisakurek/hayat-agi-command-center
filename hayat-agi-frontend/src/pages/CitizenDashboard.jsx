@@ -73,7 +73,7 @@ const CitizenDashboard = () => {
   const notifications = [
     { id: 1, title: 'Yeni Mesaj', message: 'Size yeni bir mesaj geldi', time: '2 saat önce', read: false, type: 'message' },
     { id: 2, title: 'Sistem Güncellemesi', message: 'Sistem başarıyla güncellendi', time: '5 saat önce', read: false, type: 'system' },
-    { id: 3, title: 'Cihaz Durumu', message: 'Gateway cihazınız aktif', time: '1 gün önce', read: true, type: 'device' }
+    { id: 3, title: 'Cihaz Durumu', message: 'Hayat Ağı Cihazınız aktif', time: '1 gün önce', read: true, type: 'device' }
   ];
 
   const unreadCount = notifications.filter(n => !n.read).length;

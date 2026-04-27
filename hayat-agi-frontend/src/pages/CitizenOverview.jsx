@@ -95,7 +95,7 @@ const CitizenOverview = () => {
           Genel Bakış
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', md: '1.05rem' }, fontWeight: 400 }}>
-          Gateway cihazlarınızın durumu ve sistem bilgileri
+          Hayat Ağı Cihazlarınızın durumu ve sistem bilgileri
         </Typography>
       </Box>
 
@@ -402,7 +402,7 @@ const CitizenOverview = () => {
                     Sistem Güncellemesi
                   </Typography>
                   <Typography variant="body1" color="text.secondary" sx={{ mb: 1.25, fontSize: '0.95rem', lineHeight: 1.6 }}>
-                    Gateway cihazınız v2.4.1 sürümüne güncellendi.
+                    Hayat Ağı Cihazınız v2.4.1 sürümüne güncellendi.
                   </Typography>
                   <Stack direction="row" alignItems="center" spacing={0.75}>
                     <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />

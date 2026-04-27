@@ -68,7 +68,7 @@ const GatewayManager = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <Typography variant="h4" fontWeight="bold" color="primary">
-                    Gateway Yönetimi
+                    Cihaz Yönetimi
                 </Typography>
                 <Button
                     variant="contained"
@@ -77,7 +77,7 @@ const GatewayManager = () => {
                     to="/dashboard/add-gateway"
                     sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
                 >
-                    Yeni Gateway Ekle
+                    Yeni Cihaz Ekle
                 </Button>
             </div>
 
