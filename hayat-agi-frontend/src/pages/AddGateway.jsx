@@ -230,7 +230,7 @@ const AddGateway = () => {
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
             <Typography variant="h4" fontWeight="700" sx={{ mb: 3 }}>
-                Yeni Gateway Ekle
+                Yeni Hayat Ağı Cihazı Ekle
             </Typography>
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -376,7 +376,7 @@ const AddGateway = () => {
                             fullWidth
                             sx={{ py: 1.5, fontWeight: 'bold' }}
                         >
-                            Gateway'i Kaydet
+                            Cihazı Kaydet
                         </Button>
                     </Stack>
                 </form>

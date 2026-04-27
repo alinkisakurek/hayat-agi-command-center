@@ -203,6 +203,32 @@ exports.updateGateway = async (req, res) => {
   }
 };
 
+// GET /gateways/:id/alerts — list alerts for a gateway, owner-scoped, newest first.
+exports.listGatewayAlerts = async (req, res) => {
+  try {
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id }).select('_id');
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
+    }
+
+    const alerts = await Alert.find({ gateway: gateway._id })
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    res.status(200).json(alerts);
+  } catch (error) {
+    console.error('List gateway alerts error:', error);
+    res.status(500).json({ message: 'Sunucu hatası' });
+  }
+};
+
 exports.addPersonToGateway = async (req, res) => {
   try {
     const { id } = req.params; // Gateway ID'si URL'den gelir

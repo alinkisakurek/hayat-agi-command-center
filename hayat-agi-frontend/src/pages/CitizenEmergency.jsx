@@ -219,7 +219,7 @@ const CitizenEmergency = () => {
               Sistem Durumu
             </Typography>
             <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
-              Tüm gateway cihazlarınız aktif ve çalışır durumda. Acil durumlarda otomatik olarak devreye girecektir.
+              Tüm Hayat Ağı Cihazlarınız aktif ve çalışır durumda. Acil durumlarda otomatik olarak devreye girecektir.
             </Typography>
           </Alert>
         </Stack>

@@ -39,7 +39,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 const drawerWidth = 280;
 const menuItems = [
   { text: 'Canlı Harita', icon: <MapIcon />, path: '/dashboard/harita' },
-  { text: 'Gateway Listesi', icon: <RouterIcon />, path: '/dashboard/gateways' },
+  { text: 'Cihaz Listesi', icon: <RouterIcon />, path: '/dashboard/gateways' },
   { text: 'Bildirilen Sorunlar', icon: <BugReportIcon />, path: '/dashboard/sorunlar' }
 ];
 
@@ -55,7 +55,7 @@ const Dashboard = () => {
   // Örnek bildirimler (gerçek uygulamada API'den gelecek)
   const notifications = [
     { id: 1, title: 'Yeni Sorun Bildirimi', message: 'Kullanıcı yeni bir sorun bildirdi', time: '10 dakika önce', read: false, type: 'issue' },
-    { id: 2, title: 'Gateway Durumu', message: 'Gateway cihazı düşük pil uyarısı verdi', time: '1 saat önce', read: false, type: 'device' },
+    { id: 2, title: 'Cihaz Durumu', message: 'Hayat Ağı Cihazı düşük pil uyarısı verdi', time: '1 saat önce', read: false, type: 'device' },
     { id: 3, title: 'Sistem Güncellemesi', message: 'Sistem başarıyla güncellendi', time: '3 saat önce', read: true, type: 'system' },
     { id: 4, title: 'Yeni Kullanıcı', message: 'Yeni bir kullanıcı kayıt oldu', time: '5 saat önce', read: true, type: 'user' }
   ];
