@@ -306,6 +306,59 @@ exports.addPetToGateway = async (req, res) => {
   }
 };
 
+// Disaster Event — mobil disaster modunda gönderilen olayları kayıt eder.
+// Body: { type: 'manual_message' | 'sos' | ..., message?: string, sentAt?: ISO-8601 }
+exports.addDisasterEvent = async (req, res) => {
+  try {
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const { id } = req.params;
+    const { type, message, sentAt, lang } = req.body || {};
+
+    if (!type) {
+      return res.status(400).json({ message: 'Olay tipi (type) zorunludur.' });
+    }
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
+    }
+
+    const trimmedMessage = typeof message === 'string' ? message.trim() : null;
+
+    const alert = await Alert.create({
+      device_id: gateway.serialNumber,
+      gateway: gateway._id,
+      type,
+      battery: gateway.battery,
+      signal_quality: gateway.signal_quality,
+      location: gateway.location,
+
+      // First-class fields the fusion classifier reads directly.
+      text: trimmedMessage || null,
+      lang: lang || 'tr',
+      source_user: req.user._id,
+
+      // Legacy payload kept so existing readers don't break; will be
+      // dropped once all consumers move to top-level fields.
+      payload: {
+        message: trimmedMessage || null,
+        sentAt: sentAt || new Date().toISOString(),
+      },
+    });
+
+    res.status(201).json({ message: 'Olay kaydedildi.', alert });
+  } catch (error) {
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error('Error creating disaster event:', error);
+    res.status(500).json({ message: 'Sunucu hatası' });
+  }
+};
+
 // 4. Gateway'den Evcil Hayvan Sil
 exports.removePetFromGateway = async (req, res) => {
   try {
