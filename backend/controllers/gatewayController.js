@@ -1,4 +1,5 @@
 const Gateway = require('../models/Gateway');
+const Alert = require('../models/Alert');
 const mongoose = require('mongoose');
 const { getCoordsFromAddress } = require('../utils/geocoder');
 
@@ -276,6 +277,49 @@ exports.addPetToGateway = async (req, res) => {
 
   } catch (error) {
     res.status(400).json({ message: 'Evcil hayvan eklenemedi.', error: error.message });
+  }
+};
+
+// Disaster Event — mobil disaster modunda gönderilen olayları kayıt eder.
+// Body: { type: 'manual_message' | 'sos' | ..., message?: string, sentAt?: ISO-8601 }
+exports.addDisasterEvent = async (req, res) => {
+  try {
+    if (!isMongoDBConnected()) {
+      return res.status(503).json({ message: 'Veritabanı bağlantısı yok.' });
+    }
+
+    const { id } = req.params;
+    const { type, message, sentAt } = req.body || {};
+
+    if (!type) {
+      return res.status(400).json({ message: 'Olay tipi (type) zorunludur.' });
+    }
+
+    const gateway = await Gateway.findOne({ _id: id, owner: req.user._id });
+    if (!gateway) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
+    }
+
+    const alert = await Alert.create({
+      device_id: gateway.serialNumber,
+      gateway: gateway._id,
+      type,
+      battery: gateway.battery,
+      signal_quality: gateway.signal_quality,
+      location: gateway.location,
+      payload: {
+        message: message || null,
+        sentAt: sentAt || new Date().toISOString(),
+      },
+    });
+
+    res.status(201).json({ message: 'Olay kaydedildi.', alert });
+  } catch (error) {
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error('Error creating disaster event:', error);
+    res.status(500).json({ message: 'Sunucu hatası' });
   }
 };
 

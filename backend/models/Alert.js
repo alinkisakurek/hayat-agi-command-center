@@ -8,7 +8,7 @@ const alertSchema = new Schema(
     gateway: { type: Schema.Types.ObjectId, ref: 'Gateway' },
     type: {
       type: String,
-      enum: ['sos', 'low_battery', 'crash_detection', 'other'],
+      enum: ['sos', 'low_battery', 'crash_detection', 'manual_message', 'other'],
       required: true,
     },
     status: {

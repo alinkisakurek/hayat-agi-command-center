@@ -18,4 +18,6 @@ router.delete('/:gatewayId/citizens/:personId', protect, gatewayController.remov
 router.post('/:id/pets', protect, gatewayController.addPetToGateway);
 router.delete('/:gatewayId/pets/:petId', protect, gatewayController.removePetFromGateway);
 
+router.post('/:id/disaster-events', protect, gatewayController.addDisasterEvent);
+
 module.exports = router;
