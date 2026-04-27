@@ -35,11 +35,13 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SecurityIcon from '@mui/icons-material/Security';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const drawerWidth = 280;
 const menuItems = [
   { text: 'Canlı Harita', icon: <MapIcon />, path: '/dashboard/harita' },
   { text: 'Gateway Listesi', icon: <RouterIcon />, path: '/dashboard/gateways' },
+  { text: 'Vatandaş İstatistikleri', icon: <BarChartIcon />, path: '/dashboard/istatistikler' },
   { text: 'Bildirilen Sorunlar', icon: <BugReportIcon />, path: '/dashboard/sorunlar' }
 ];
 
