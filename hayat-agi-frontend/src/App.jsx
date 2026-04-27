@@ -23,6 +23,7 @@ import GatewayManager from './pages/GatewayManager'; // Admin Gateway Listesi (C
 import AddGateway from './pages/AddGateway'; // Admin Ekleme Formu
 import LiveMap from './pages/LiveMap'; // Canlı Harita Sayfası
 import ReportedIssues from './pages/ReportedIssues'; // Bildirilen Sorunlar
+import AdminCitizenStats from './pages/AdminCitizenStats'; // KVKK uyumlu agrega istatistikler
 
 
 // Vatandaş Sayfaları
@@ -103,6 +104,9 @@ function App() {
 
               {/* 4. Bildirilen Sorunlar */}
               <Route path="sorunlar" element={<ReportedIssues />} />
+
+              {/* 5. Vatandaş İstatistikleri (KVKK uyumlu) */}
+              <Route path="istatistikler" element={<AdminCitizenStats />} />
             </Route>
 
 
