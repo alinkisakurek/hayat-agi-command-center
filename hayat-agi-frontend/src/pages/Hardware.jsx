@@ -25,7 +25,7 @@ const featureCards = [
     id: 'low-power',
     title: 'Düşük Enerji Tüketimi',
     description:
-      'ESP32 tabanlı gateway’ler düşük güç modları ve batarya destekli kullanım ile afet senaryolarında günlerce aktif kalır.',
+      'ESP32 tabanlı Hayat Ağı Cihazları düşük güç modları ve batarya destekli kullanım ile afet senaryolarında günlerce aktif kalır.',
     icon: <RestartAltIcon fontSize="large" />,
   },
   {
@@ -43,7 +43,7 @@ const Hardware = () => {
     () => ({
       title: 'Hayat Ağı Cihazları',
       description:
-        "LOLIN ESP32 ve LoRa E22'nin teknik olarak yarattığı düşük maliyet ve düşük enerji kullanım avantajlarını birleştirdik. Gateway'lerimiz, afet sahasında sürekli iletişimi mümkün kılar.",
+        "LOLIN ESP32 ve LoRa E22'nin teknik olarak yarattığı düşük maliyet ve düşük enerji kullanım avantajlarını birleştirdik. Hayat Ağı Cihazlarımız, afet sahasında sürekli iletişimi mümkün kılar.",
       tagline: 'Tagline',
     }),
     [],

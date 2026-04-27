@@ -268,7 +268,7 @@ const MapComponent = ({ gateways = [], selectedGateway, onGatewayClick, onMarker
                 </Paper>
 
                 {validGateways.length > 0 && (
-                    <Tooltip title="Tüm Gateway'leri Göster">
+                    <Tooltip title="Tüm Cihazları Göster">
                         <IconButton
                             size="small"
                             onClick={() => {
