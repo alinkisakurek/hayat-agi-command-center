@@ -18,4 +18,6 @@ router.delete('/:gatewayId/citizens/:personId', protect, gatewayController.remov
 router.post('/:id/pets', protect, gatewayController.addPetToGateway);
 router.delete('/:gatewayId/pets/:petId', protect, gatewayController.removePetFromGateway);
 
+router.get('/:id/alerts', protect, gatewayController.listGatewayAlerts);
+
 module.exports = router;
