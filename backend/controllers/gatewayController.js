@@ -289,7 +289,7 @@ exports.addDisasterEvent = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { type, message, sentAt } = req.body || {};
+    const { type, message, sentAt, lang } = req.body || {};
 
     if (!type) {
       return res.status(400).json({ message: 'Olay tipi (type) zorunludur.' });
@@ -300,6 +300,8 @@ exports.addDisasterEvent = async (req, res) => {
       return res.status(404).json({ message: 'Cihaz bulunamadı veya yetkiniz yok.' });
     }
 
+    const trimmedMessage = typeof message === 'string' ? message.trim() : null;
+
     const alert = await Alert.create({
       device_id: gateway.serialNumber,
       gateway: gateway._id,
@@ -307,8 +309,16 @@ exports.addDisasterEvent = async (req, res) => {
       battery: gateway.battery,
       signal_quality: gateway.signal_quality,
       location: gateway.location,
+
+      // First-class fields the fusion classifier reads directly.
+      text: trimmedMessage || null,
+      lang: lang || 'tr',
+      source_user: req.user._id,
+
+      // Legacy payload kept so existing readers don't break; will be
+      // dropped once all consumers move to top-level fields.
       payload: {
-        message: message || null,
+        message: trimmedMessage || null,
         sentAt: sentAt || new Date().toISOString(),
       },
     });
